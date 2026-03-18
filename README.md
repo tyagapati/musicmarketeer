@@ -1,4 +1,4 @@
-# SoundMatch MVP
+## SoundMatch MVP
 
 A full-stack web application that helps upcoming music artists find the best matching music marketers based on genre, goals, and budget.
 
