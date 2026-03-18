@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}SoundMatch – Find your music marketer{% endblock %}
+{% block content %}
+<h1>Find your music marketer</h1>
+<p>SoundMatch helps upcoming artists connect with the right marketer based on genre, goals, and budget.</p>
+<div style="display:flex;gap:1rem;margin-top:1.5rem;flex-wrap:wrap;">
+    <a href="/artist/intake" class="btn btn-primary">Start campaign builder</a>
+    <a href="/search/browse" class="btn" style="background:#374151;color:#e5e7eb;">Browse marketers</a>
+</div>
+<div class="card" style="margin-top:2rem;">
+    <h2>How it works</h2>
+    <ol style="padding-left:1.2rem;color:#9ca3af;line-height:2;">
+        <li>Fill out your <a href="/artist/intake">campaign brief</a> — genre, goals, budget, stats.</li>
+        <li>Our engine scores every approved marketer across 9 dimensions.</li>
+        <li>See your top 5 ranked matches with plain-English reasons.</li>
+    </ol>
+</div>
+{% endblock %}

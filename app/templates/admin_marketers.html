@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Marketers – Admin – SoundMatch{% endblock %}
+{% block content %}
+<h1>Manage marketers</h1>
+{% for m in marketers %}
+<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <div>
+        <strong>{{ m.name }}</strong> – {{ m.brand_name or '' }}
+        <span class="badge {{ m.status }}">{{ m.status }}</span>
+        <br><span style="font-size:0.8rem;color:#6b7280;">{{ m.genres | join(", ") }}</span>
+    </div>
+    <div style="display:flex;gap:0.5rem;">
+        {% if m.status != 'approved' %}
+        <form method="POST" action="/admin/marketers/{{ m.id }}/approve">
+            <button class="btn btn-sm btn-success">Approve</button>
+        </form>
+        {% endif %}
+        {% if m.status != 'rejected' %}
+        <form method="POST" action="/admin/marketers/{{ m.id }}/reject">
+            <button class="btn btn-sm btn-danger">Reject</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="card"><p>No marketers yet.</p></div>
+{% endfor %}
+<p style="margin-top:1rem;"><a href="/admin/">← Dashboard</a></p>
+{% endblock %}

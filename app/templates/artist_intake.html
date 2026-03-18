@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Campaign builder – SoundMatch{% endblock %}
+{% block content %}
+<h1>Campaign builder</h1>
+<p>Tell us about your music and goals. We'll find your best-fit marketers.</p>
+<form method="POST" action="/artist/intake">
+    <div class="grid2">
+        <div>
+            <label>Artist name *</label>
+            <input type="text" name="artist_name" required placeholder="e.g. Maya">
+        </div>
+        <div>
+            <label>Email *</label>
+            <input type="email" name="email" required placeholder="you@example.com">
+        </div>
+    </div>
+    <label>Genres (comma-separated) *</label>
+    <input type="text" name="genres" required placeholder="e.g. indie, bedroom-pop">
+    <label>Goals (comma-separated)</label>
+    <input type="text" name="goals" placeholder="e.g. streams, playlist_adds, followers">
+    <label>Services needed (comma-separated)</label>
+    <input type="text" name="services_needed" placeholder="e.g. playlist_pitching, social_media_strategy">
+    <div class="grid2">
+        <div>
+            <label>Budget min ($)</label>
+            <input type="number" name="budget_min" placeholder="200">
+        </div>
+        <div>
+            <label>Budget max ($)</label>
+            <input type="number" name="budget_max" placeholder="1000">
+        </div>
+    </div>
+    <div class="grid2">
+        <div>
+            <label>Spotify monthly listeners</label>
+            <input type="number" name="spotify_monthly_listeners" placeholder="0">
+        </div>
+        <div>
+            <label>TikTok followers</label>
+            <input type="number" name="tiktok_followers" placeholder="0">
+        </div>
+        <div>
+            <label>Instagram followers</label>
+            <input type="number" name="ig_followers" placeholder="0">
+        </div>
+        <div>
+            <label>YouTube subscribers</label>
+            <input type="number" name="yt_subscribers" placeholder="0">
+        </div>
+    </div>
+    <label>Timeline</label>
+    <select name="timeline">
+        <option value="">– select –</option>
+        <option value="asap">ASAP</option>
+        <option value="1_month">Within 1 month</option>
+        <option value="3_months">Within 3 months</option>
+        <option value="flexible">Flexible</option>
+    </select>
+    <label>Past marketing experience</label>
+    <select name="past_marketing_exp">
+        <option value="diy">DIY only</option>
+        <option value="hired_before">Hired someone before</option>
+        <option value="agency">Used an agency</option>
+    </select>
+    <button type="submit" class="btn btn-primary">Find my matches →</button>
+</form>
+{% endblock %}

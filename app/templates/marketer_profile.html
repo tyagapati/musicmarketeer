@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ marketer.name }} – SoundMatch{% endblock %}
+{% block content %}
+<h1>{{ marketer.name }}</h1>
+<p style="font-size:1.1rem;color:#e5e7eb;margin-bottom:0.25rem;">{{ marketer.brand_name or '' }}</p>
+<p>{{ marketer.bio or '' }}</p>
+<div class="card">
+    <h2>Details</h2>
+    <p><strong>Genres:</strong> {% for g in marketer.genres %}<span class="badge">{{ g }}</span>{% endfor %}</p>
+    <p><strong>Services:</strong> {% for s in marketer.services %}<span class="badge">{{ s }}</span>{% endfor %}</p>
+    <p><strong>Budget range:</strong> ${{ marketer.price_min }} – ${{ marketer.price_max }} ({{ marketer.price_model or '' }})</p>
+    <p><strong>Geography:</strong> {{ marketer.geography or 'N/A' }}</p>
+    <p><strong>Languages:</strong> {{ marketer.languages | join(", ") }}</p>
+</div>
+<a href="/search/browse">← Browse</a>
+{% endblock %}

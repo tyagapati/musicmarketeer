@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Admin – SoundMatch{% endblock %}
+{% block content %}
+<h1>Admin dashboard</h1>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+    <div class="card" style="flex:1;min-width:140px;text-align:center;">
+        <div class="score">{{ pending }}</div>
+        <p style="margin:0;">Pending review</p>
+    </div>
+    <div class="card" style="flex:1;min-width:140px;text-align:center;">
+        <div class="score" style="color:#6ee7b7;">{{ approved }}</div>
+        <p style="margin:0;">Approved</p>
+    </div>
+</div>
+<a href="/admin/marketers" class="btn btn-primary">Manage marketers →</a>
+{% endblock %}

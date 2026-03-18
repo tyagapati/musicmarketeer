@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Brief: {{ brief.artist_name }} – SoundMatch{% endblock %}
+{% block content %}
+<h1>Brief: {{ brief.artist_name }}</h1>
+<div class="card">
+    <p><strong>Email:</strong> {{ brief.email }}</p>
+    <p><strong>Genres:</strong> {{ brief.genres | join(", ") }}</p>
+    <p><strong>Goals:</strong> {{ brief.goals | join(", ") }}</p>
+    <p><strong>Services:</strong> {{ brief.services_needed | join(", ") }}</p>
+    <p><strong>Budget:</strong> ${{ brief.budget_min }} – ${{ brief.budget_max }}</p>
+    <p><strong>Maturity tier:</strong> {{ brief.maturity_tier }}</p>
+</div>
+<a href="/search/match/{{ brief.id }}" class="btn btn-primary">See matches →</a>
+{% endblock %}

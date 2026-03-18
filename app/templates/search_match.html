@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Matches for {{ brief.artist_name }} – SoundMatch{% endblock %}
+{% block content %}
+<h1>Top matches for {{ brief.artist_name }}</h1>
+<p>Genres: {{ brief.genres | join(", ") }} · Budget: ${{ brief.budget_min }}–${{ brief.budget_max }} · Tier: {{ brief.maturity_tier }}</p>
+{% if results %}
+  {% for r in results %}
+  <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+          <h2><a href="/search/marketer/{{ r.marketer.id }}">{{ r.marketer.name }}</a> – {{ r.marketer.brand_name or '' }}</h2>
+          <span class="score">{{ (r.match_score * 100) | int }}%</span>
+      </div>
+      <p style="margin-bottom:0.5rem;">
+          {% for genre in r.marketer.genres %}<span class="badge">{{ genre }}</span>{% endfor %}
+      </p>
+      <p>{% for reason in r.top_reasons %}✓ {{ reason }}&nbsp;&nbsp;{% endfor %}</p>
+      <p style="font-size:0.85rem;color:#6b7280;">${{ r.marketer.price_min }}–${{ r.marketer.price_max }}</p>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="card"><p>No matches found. Try broadening your genres or budget.</p></div>
+{% endif %}
+<a href="/artist/intake">← New brief</a>
+{% endblock %}

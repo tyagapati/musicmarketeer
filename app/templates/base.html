@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SoundMatch{% endblock %}</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #111827; color: #e5e7eb; min-height: 100vh; }
+        nav { background: #1f2937; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; border-bottom: 1px solid #374151; }
+        nav a { color: #9ca3af; text-decoration: none; font-size: 0.9rem; }
+        nav a:hover, nav a.active { color: #fff; }
+        nav .brand { font-size: 1.2rem; font-weight: 700; color: #6366f1; margin-right: auto; }
+        .container { max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; }
+        h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 1rem; color: #fff; }
+        h2 { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.75rem; color: #e5e7eb; }
+        p { color: #9ca3af; margin-bottom: 0.75rem; line-height: 1.6; }
+        a { color: #818cf8; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .card { background: #1f2937; border: 1px solid #374151; border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; }
+        .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: #374151; color: #9ca3af; margin: 0.15rem; }
+        .badge.approved { background: #064e3b; color: #6ee7b7; }
+        .badge.pending { background: #78350f; color: #fcd34d; }
+        .btn { display: inline-block; padding: 0.5rem 1.2rem; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; }
+        .btn-primary { background: #6366f1; color: #fff; }
+        .btn-primary:hover { background: #4f46e5; text-decoration: none; }
+        .btn-sm { padding: 0.3rem 0.8rem; font-size: 0.8rem; }
+        .btn-success { background: #065f46; color: #6ee7b7; }
+        .btn-danger { background: #7f1d1d; color: #fca5a5; }
+        form label { display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.3rem; }
+        form input, form select, form textarea { width: 100%; padding: 0.5rem 0.75rem; background: #111827; border: 1px solid #374151; border-radius: 6px; color: #e5e7eb; font-size: 0.9rem; margin-bottom: 1rem; }
+        form input:focus, form select:focus, form textarea:focus { outline: none; border-color: #6366f1; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .score { font-size: 1.5rem; font-weight: 700; color: #6366f1; }
+        .flash { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; background: #064e3b; color: #6ee7b7; border: 1px solid #065f46; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/" class="brand">SoundMatch</a>
+    <a href="/artist/intake">Campaign builder</a>
+    <a href="/search/browse">Browse marketers</a>
+    <a href="/admin/">Admin</a>
+</nav>
+<div class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}{% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</div>
+</body>
+</html>
