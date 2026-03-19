@@ -17,7 +17,15 @@ def match(brief_id):
 def browse():
     view_all = request.args.get("view") == "all"
     marketers = Marketer.query.filter_by(status="approved").limit(50).all()
-    return render_template("search_browse.html", marketers=marketers, view_all=view_all)
+    # Pre-chunk for carousel (avoid Jinja `batch` + `loop.length` — batch is a generator and
+    # `loop.length` can raise TemplateRuntimeError in production Jinja versions).
+    marketer_carousel_pages = [marketers[i : i + 3] for i in range(0, len(marketers), 3)]
+    return render_template(
+        "search_browse.html",
+        marketers=marketers,
+        marketer_carousel_pages=marketer_carousel_pages,
+        view_all=view_all,
+    )
 
 
 @search_bp.route("/marketer/<int:id>")

@@ -631,7 +631,7 @@
             </div>
             <div class="browse-carousel-viewport">
               <div class="browse-carousel-track">
-                {% for page in marketers|batch(3) %}
+                {% for page in marketer_carousel_pages %}
                 <div class="browse-carousel-slide" role="group" aria-label="Featured marketers, group {{ loop.index }} of {{ loop.length }}">
                   {% for m in page %}
                   <a class="browse-spot-card" href="/search/marketer/{{ m.id }}">
