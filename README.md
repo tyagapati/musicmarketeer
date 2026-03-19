@@ -15,7 +15,7 @@ A full-stack web application that helps upcoming music artists find the best mat
 - **Backend**: Flask + Flask-SQLAlchemy + Flask-Migrate
 - **Database**: SQLite (dev), PostgreSQL-ready
 - **Background Jobs**: RQ + Redis (with sync fallback)
-- **Validation**: Pydantic
+- **Optional extras**: RQ + Redis + Praw (`requirements-extra.txt`) for background jobs / Reddit ingestion
 - **Templates**: Jinja2 with dark-themed UI
 
 ## Setup Instructions
@@ -42,7 +42,11 @@ source venv/bin/activate
 
 ```bash
 pip install -r requirements.txt
+# Optional: worker / Reddit ingestion
+pip install -r requirements-extra.txt
 ```
+
+The main `requirements.txt` is intentionally small so production installs (e.g. Render) stay fast. **`.python-version`** pins **3.12.x** so wheels (especially `psycopg`) install quickly—avoid **3.14** on PaaS unless you know wheels exist.
 
 ### 4. Configure Environment
 
@@ -159,6 +163,13 @@ The matching engine scores marketers across 9 dimensions:
 9. **Confidence** (5%) - Platform confidence score
 
 All weights are configurable via environment variables.
+
+### Render build stuck on “Installing dependencies”?
+
+- Much of a long wait is often the **queue** or network, not pip—open the build log and see whether it’s still downloading wheels or waiting.
+- Set **Environment → `PYTHON_VERSION`** to **`3.12.8`** (or rely on repo **`.python-version`**) so Render doesn’t default to a very new Python with fewer prebuilt wheels.
+- **Clear build cache & deploy** if a previous build left a bad partial install.
+- This repo’s slim **`requirements.txt`** avoids optional packages (`praw`, `redis`, `rq`) that aren’t needed for the web UI + Postgres.
 
 ## Deploying to Render (PostgreSQL)
 

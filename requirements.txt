@@ -1,16 +1,9 @@
+# Web app + Postgres (Render / production). Keep this lean for fast installs.
 Flask==3.0.0
 Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.5
-# Pydantic 2.5.x doesn't support Python 3.14 (missing pydantic-core wheels).
-# Keep it flexible within v2 to work across Python versions.
-pydantic>=2.11.0,<3
 python-dotenv==1.0.0
-rq==1.15.1
-redis==5.0.1
 requests==2.31.0
-praw==7.7.1
 gunicorn==22.0.0
-# PostgreSQL driver (optional for local dev; SQLite is default).
-# psycopg2-binary doesn't ship wheels for newer Python versions (e.g., 3.14) and
-# may try to compile from source (needs pg_config). Psycopg 3 provides wheels.
+# Wheels for common Python versions; use runtime.txt to avoid 3.14 source builds.
 psycopg[binary]==3.3.3

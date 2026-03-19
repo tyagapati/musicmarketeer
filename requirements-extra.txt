@@ -1,0 +1,5 @@
+# Optional: local dev / RQ worker / Reddit ingestion (not needed for browse + admin on Render).
+-r requirements.txt
+rq==1.15.1
+redis==5.0.1
+praw==7.7.1
