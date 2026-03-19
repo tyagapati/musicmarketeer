@@ -1,19 +1,846 @@
 {% extends "base.html" %}
 {% block title %}Browse marketers – SoundMatch{% endblock %}
+{% block container_class %}{% if not view_all %}browse-container-bleed{% else %}container--wide{% endif %}{% endblock %}
+{% block extra_head %}
+<style>
+  /* Full-bleed intro: no bordered “card” — uses entire viewport */
+  .browse-container-bleed{
+    max-width: 100% !important;
+    width: 100%;
+    padding: 0 !important;
+    margin: 0 auto !important;
+  }
+  .browse-shell{
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+  .browse-container-bleed .browse-shell{
+    max-width: 100%;
+    margin: 0;
+  }
+  .browse-intro-full{
+    position: relative;
+    min-height: calc(100dvh - 4.5rem);
+    overflow-x: hidden;
+    overflow-y: visible;
+    margin: 0;
+    padding: 0;
+    /* Floor + atmosphere — matches site cyan/violet */
+    background:
+      radial-gradient(ellipse 90% 45% at 50% 100%, rgba(34,211,238,.08), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 88% 18%, rgba(167,139,250,.22), transparent 50%),
+      radial-gradient(ellipse 55% 40% at 12% 85%, rgba(34,211,238,.12), transparent 45%),
+      linear-gradient(180deg, #070A13 0%, #0B1022 40%, #060914 100%);
+  }
+  .browse-intro-full::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+      repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(255,255,255,.015) 80px, rgba(255,255,255,.015) 81px),
+      repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(255,255,255,.012) 80px, rgba(255,255,255,.012) 81px);
+    opacity:.6;
+    pointer-events:none;
+    z-index: 0;
+  }
+  .browse-intro-full::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height: 28%;
+    background: linear-gradient(180deg, transparent, rgba(7,10,19,.55));
+    pointer-events:none;
+    z-index: 1;
+  }
+  .browse-intro-top{
+    position: relative;
+    z-index: 4;
+    padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1rem, 4vw, 2.5rem) 0;
+    pointer-events: auto;
+  }
+  .browse-intro-copy{
+    max-width: 640px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .browse-intro-full h1{
+    margin: 0 0 .5rem;
+    font-size: clamp(1.85rem, 4vw, 3.15rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #F8FBFF 0%, #C4E9F5 35%, #C4B5FD 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(0 2px 24px rgba(34,211,238,.2));
+  }
+  .browse-intro-full .sub{
+    margin: 0 auto 1.25rem;
+    color: var(--muted);
+    max-width: 52ch;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+  .browse-intro-cta{
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .browse-intro-cta .btn{
+    flex: 1 1 200px;
+    min-height: 46px;
+    justify-content: center;
+    text-align: center;
+  }
+  .browse-intro-note{
+    margin-top: 1rem;
+    color: var(--muted2);
+    font-size: .86rem;
+  }
+  /* Below the hero copy: calm spotlight + soft geometry (no curved trail) */
+  .browse-intro-bottom{
+    position: relative;
+    z-index: 3;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 3.5vw, 2.25rem) clamp(1rem, 4vw, 2.5rem) clamp(2rem, 5vw, 3.25rem);
+  }
+  .browse-visual{
+    position: relative;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,.1);
+    background:
+      linear-gradient(145deg, rgba(34,211,238,.06) 0%, transparent 42%),
+      linear-gradient(320deg, rgba(167,139,250,.08) 0%, transparent 45%),
+      linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    box-shadow:
+      0 0 0 1px rgba(34,211,238,.06) inset,
+      0 24px 48px rgba(0,0,0,.28);
+    overflow: hidden;
+  }
+  .browse-visual-decor{
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .browse-visual-decor::before{
+    content: "";
+    position: absolute;
+    width: 140%;
+    height: 1px;
+    left: -20%;
+    top: 38%;
+    background: linear-gradient(90deg, transparent, rgba(34,211,238,.25), rgba(167,139,250,.2), transparent);
+    transform: rotate(-8deg);
+    opacity: 0.7;
+  }
+  .browse-visual-decor::after{
+    content: "";
+    position: absolute;
+    width: 120%;
+    height: 1px;
+    right: -15%;
+    bottom: 32%;
+    background: linear-gradient(90deg, transparent, rgba(167,139,250,.18), rgba(34,211,238,.15), transparent);
+    transform: rotate(6deg);
+    opacity: 0.55;
+  }
+  .browse-orb{
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(48px);
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .browse-orb--1{
+    width: min(320px, 55vw);
+    height: min(320px, 55vw);
+    left: -8%;
+    top: -25%;
+    background: radial-gradient(circle, rgba(34,211,238,.45), transparent 68%);
+  }
+  .browse-orb--2{
+    width: min(280px, 48vw);
+    height: min(280px, 48vw);
+    right: -6%;
+    bottom: -30%;
+    background: radial-gradient(circle, rgba(167,139,250,.5), transparent 70%);
+  }
+  .browse-orb--3{
+    width: min(200px, 36vw);
+    height: min(200px, 36vw);
+    left: 42%;
+    top: 55%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(224,242,254,.2), transparent 65%);
+    opacity: 0.5;
+    filter: blur(36px);
+  }
+  .browse-visual-inner{
+    position: relative;
+    z-index: 2;
+    padding: clamp(1.1rem, 2.8vw, 1.65rem);
+  }
+  .browse-visual-kicker{
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(224,242,254,.55);
+  }
+  /* Featured carousel: 3 cards per slide */
+  .browse-carousel{
+    position: relative;
+  }
+  .browse-carousel-head{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem 1rem;
+    margin-bottom: 0.85rem;
+  }
+  .browse-carousel-controls{
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .browse-carousel-btn{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 11px;
+    border: 1px solid rgba(255,255,255,.18);
+    background: rgba(255,255,255,.06);
+    color: #eef4ff;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, color .2s ease;
+  }
+  .browse-carousel-btn:hover{
+    background: rgba(34,211,238,.12);
+    border-color: rgba(34,211,238,.35);
+    color: #fff;
+  }
+  .browse-carousel-btn:focus-visible{
+    outline: 2px solid rgba(34,211,238,.65);
+    outline-offset: 2px;
+  }
+  .browse-carousel-btn:disabled{
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .browse-carousel-dots{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 0.15rem;
+  }
+  .browse-carousel-dot{
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,.22);
+    cursor: pointer;
+    transition: background .2s ease, transform .2s ease;
+  }
+  .browse-carousel-dot:hover{
+    background: rgba(255,255,255,.4);
+  }
+  .browse-carousel-dot[aria-current="true"]{
+    background: linear-gradient(135deg, #22D3EE, #A78BFA);
+    transform: scale(1.2);
+  }
+  .browse-carousel-dot:focus-visible{
+    outline: 2px solid rgba(34,211,238,.65);
+    outline-offset: 2px;
+  }
+  .browse-carousel-viewport{
+    overflow: hidden;
+    border-radius: 16px;
+    margin: 0 -0.15rem;
+    padding: 0 0.15rem;
+  }
+  .browse-carousel-track{
+    display: flex;
+    transition: transform 0.55s cubic-bezier(0.33, 1, 0.68, 1);
+    will-change: transform;
+  }
+  .browse-carousel.browse-carousel--no-motion .browse-carousel-track{
+    transition: none;
+  }
+  .browse-carousel-slide{
+    flex: 0 0 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(0.85rem, 2.8vw, 1.25rem);
+    padding: 0.35rem 0.2rem 0.55rem;
+    box-sizing: border-box;
+  }
+  .browse-spot-card{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.72rem;
+    padding: 0.9rem 0.95rem 1rem;
+    border-radius: 16px;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid rgba(255,255,255,.14);
+    background: linear-gradient(165deg, rgba(255,255,255,.1), rgba(11,16,34,.55));
+    box-shadow: 0 10px 24px rgba(0,0,0,.22), 0 0 0 1px rgba(34,211,238,.06) inset;
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+  }
+  .browse-spot-card:hover{
+    border-color: rgba(34,211,238,.35);
+    box-shadow: 0 14px 32px rgba(0,0,0,.28), 0 0 0 1px rgba(34,211,238,.14) inset;
+    transform: translateY(-2px);
+  }
+  .browse-spot-card:focus-visible{
+    outline: 2px solid rgba(34,211,238,.65);
+    outline-offset: 2px;
+  }
+  .browse-spot-avatar{
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: min(92px, 26vw);
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.16);
+    box-shadow: 0 8px 18px rgba(0,0,0,.32);
+  }
+  @media (min-width: 640px){
+    .browse-spot-avatar{ max-height: min(104px, 22vw); }
+  }
+  @media (min-width: 1024px){
+    .browse-spot-avatar{ max-height: min(118px, 14vw); }
+  }
+  .browse-spot-meta b{
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 750;
+    color: #eef4ff;
+    line-height: 1.28;
+  }
+  .browse-spot-meta span{
+    display: block;
+    margin-top: 0.22rem;
+    font-size: 0.78rem;
+    color: var(--muted2);
+    line-height: 1.4;
+  }
+  /* Placeholder social proof (replace with real testimonials later) */
+  .browse-reviews-placeholder{
+    margin: clamp(1.1rem, 2.8vw, 1.55rem) 0 0;
+    padding-top: clamp(1rem, 2.4vw, 1.35rem);
+    border-top: 1px solid rgba(255,255,255,.08);
+  }
+  .browse-reviews-placeholder-head{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.35rem 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .browse-reviews-placeholder-title{
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(224,242,254,.5);
+  }
+  .browse-reviews-placeholder-note{
+    margin: 0;
+    font-size: 0.68rem;
+    color: var(--muted2);
+    font-style: italic;
+  }
+  .browse-reviews-grid{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+  @media (min-width: 720px){
+    .browse-reviews-grid{
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+  }
+  .browse-review-fake{
+    margin: 0;
+    padding: 0.78rem 0.85rem 0.82rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.1);
+    background: rgba(7,10,19,.35);
+    box-shadow: 0 0 0 1px rgba(34,211,238,.04) inset;
+  }
+  .browse-review-fake-stars{
+    display: block;
+    margin-bottom: 0.45rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    color: rgba(250,204,21,.88);
+    user-select: none;
+  }
+  .browse-review-fake-quote{
+    margin: 0 0 0.55rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: #e4ebfa;
+  }
+  .browse-review-fake-by{
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--muted2);
+  }
+  .browse-review-fake-by strong{
+    color: rgba(224,242,254,.82);
+    font-weight: 650;
+  }
+  .browse-spotlight-empty{
+    margin: 0;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+  @media (max-width: 640px){
+    .browse-intro-copy{ text-align: left; }
+    .browse-intro-full{ min-height: auto; padding-bottom: 1.5rem; overflow-y: visible; }
+    .browse-intro-cta{ max-width: none; }
+    .browse-intro-cta .btn{ flex: 1 1 calc(50% - 0.375rem); min-width: 140px; }
+    .browse-carousel-head{ flex-direction: column; align-items: stretch; }
+    .browse-carousel-controls{ justify-content: center; }
+    .browse-carousel-slide{
+      gap: 0.65rem;
+      padding: 0.25rem 0.05rem 0.45rem;
+    }
+    .browse-spot-card{ padding: 0.75rem 0.72rem 0.82rem; gap: 0.62rem; }
+    .browse-spot-meta b{ font-size: 0.84rem; }
+    .browse-spot-meta span{ font-size: 0.72rem; }
+    .browse-spot-avatar{ max-height: min(80px, 28vw); border-radius: 11px; }
+  }
+  .browse-hero{
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 18px;
+    padding: 1.2rem 1.25rem;
+    background:
+      radial-gradient(700px 220px at 10% 0%, rgba(34,211,238,.15), transparent 60%),
+      radial-gradient(700px 220px at 90% 0%, rgba(167,139,250,.15), transparent 62%),
+      linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+    margin-bottom: 1rem;
+  }
+  .browse-hero h1{
+    margin: 0 0 .35rem;
+    font-size: clamp(1.6rem, 2.5vw, 2.4rem);
+  }
+  .browse-hero p{
+    margin: 0;
+    color: var(--muted);
+  }
+  .browse-hero .count{
+    display:inline-flex;
+    margin-top: .7rem;
+    font-size: .83rem;
+    color: #dce7ff;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 999px;
+    padding: .3rem .65rem;
+    background: rgba(255,255,255,.04);
+  }
+
+  .marketer-grid{
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: .9rem;
+  }
+  .m-card{
+    border: 1px solid rgba(34,211,238,.20);
+    border-radius: 16px;
+    background:
+      linear-gradient(160deg, rgba(34,211,238,.08), rgba(167,139,250,.08) 45%, rgba(11,16,34,.82)),
+      linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+    box-shadow: 0 18px 40px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.05);
+    overflow: hidden;
+    display:flex;
+    flex-direction: column;
+    min-height: 320px;
+  }
+  .m-card-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:.6rem;
+    padding: .95rem .95rem .5rem;
+  }
+  .m-name{
+    margin: 0;
+    font-size: 1.03rem;
+    line-height: 1.25;
+    color: #eff3ff;
+  }
+  .m-name a{
+    color: inherit;
+    text-decoration: none;
+  }
+  .m-name a:hover{
+    text-decoration: underline;
+  }
+  .m-brand{
+    margin: .2rem 0 0;
+    color: var(--muted2);
+    font-size: .86rem;
+  }
+  .m-person{
+    display:flex;
+    align-items:center;
+    gap:.65rem;
+  }
+  .m-avatar{
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,.16);
+    box-shadow: 0 6px 16px rgba(0,0,0,.32);
+    flex-shrink: 0;
+  }
+  .m-price{
+    flex-shrink: 0;
+    font-size: .82rem;
+    color: #d4def7;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 999px;
+    padding: .24rem .55rem;
+    background: rgba(255,255,255,.04);
+  }
+  .m-body{
+    padding: 0 .95rem .7rem;
+  }
+  .m-bio{
+    margin: .35rem 0 .7rem;
+    color: var(--muted);
+    font-size: .92rem;
+    line-height: 1.55;
+  }
+  .m-badges{
+    margin-bottom: .55rem;
+  }
+  .m-stats{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: .45rem;
+    margin-top: .35rem;
+  }
+  .m-stat{
+    border: 1px solid rgba(255,255,255,.11);
+    border-radius: 10px;
+    background: rgba(255,255,255,.03);
+    padding: .45rem .55rem;
+  }
+  .m-stat b{
+    display:block;
+    font-size: .95rem;
+    color: #e7efff;
+  }
+  .m-stat span{
+    display:block;
+    font-size: .74rem;
+    color: var(--muted2);
+    margin-top: .08rem;
+  }
+  .m-foot{
+    margin-top: auto;
+    padding: .85rem .95rem 1rem;
+    border-top: 1px solid rgba(255,255,255,.10);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: .6rem;
+  }
+  .m-meta{
+    font-size: .78rem;
+    color: var(--muted2);
+  }
+  .empty-state{
+    border: 1px dashed rgba(255,255,255,.18);
+    border-radius: 16px;
+    padding: 1.1rem;
+    background: rgba(255,255,255,.03);
+  }
+  @media (max-width: 1080px){
+    .marketer-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+  @media (max-width: 720px){
+    .marketer-grid{ grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
 {% block content %}
-<h1>Browse marketers</h1>
-{% if marketers %}
-  {% for m in marketers %}
-  <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-          <h2><a href="/search/marketer/{{ m.id }}">{{ m.name }}</a> – {{ m.brand_name or '' }}</h2>
-          <span style="font-size:0.85rem;color:#6b7280;">${{ m.price_min }}–${{ m.price_max }}</span>
+<div class="browse-shell">
+  {% if not view_all %}
+  <section class="browse-intro-full" aria-label="Browse marketers intro">
+    <div class="browse-intro-top">
+      <div class="browse-intro-copy">
+        <h1>Browse our endless catalogue of vetted marketers</h1>
+        <p class="sub">Discover specialists by genre, service, and pricing. Every profile includes proof and confidence signals so you can compare options quickly.</p>
+        <div class="browse-intro-cta">
+          <a href="/search/browse?view=all" class="btn btn-primary">Check full list</a>
+          <a href="/artist/intake" class="btn btn-secondary">Build my brief first</a>
+        </div>
+        <div class="browse-intro-note">{{ marketers|length }} vetted marketers currently in the directory.</div>
       </div>
-      <p style="margin:0.4rem 0;">{% for g in m.genres %}<span class="badge">{{ g }}</span>{% endfor %}</p>
-      <p>{{ m.bio[:120] if m.bio else '' }}{% if m.bio and m.bio|length > 120 %}…{% endif %}</p>
+    </div>
+
+    <div class="browse-intro-bottom">
+      <div class="browse-visual">
+        <div class="browse-visual-decor" aria-hidden="true">
+          <span class="browse-orb browse-orb--1"></span>
+          <span class="browse-orb browse-orb--2"></span>
+          <span class="browse-orb browse-orb--3"></span>
+        </div>
+        <div class="browse-visual-inner">
+          {% if marketers %}
+          <div class="browse-carousel" id="browse-featured-carousel" data-interval-ms="5600" role="region" aria-roledescription="carousel" aria-label="Featured marketers from the directory">
+            <div class="browse-carousel-head">
+              <p class="browse-visual-kicker">Featured from the directory</p>
+              <div class="browse-carousel-controls">
+                <button type="button" class="browse-carousel-btn browse-carousel-prev" aria-label="Previous featured marketers">‹</button>
+                <div class="browse-carousel-dots" role="group" aria-label="Carousel pagination"></div>
+                <button type="button" class="browse-carousel-btn browse-carousel-next" aria-label="Next featured marketers">›</button>
+              </div>
+            </div>
+            <div class="browse-carousel-viewport">
+              <div class="browse-carousel-track">
+                {% for page in marketers|batch(3) %}
+                <div class="browse-carousel-slide" role="group" aria-label="Featured marketers, group {{ loop.index }} of {{ loop.length }}">
+                  {% for m in page %}
+                  <a class="browse-spot-card" href="/search/marketer/{{ m.id }}">
+                    <img class="browse-spot-avatar" src="https://i.pravatar.cc/96?img={{ (m.id % 70) + 1 }}" alt="Profile image for {{ m.name }}" width="96" height="96" loading="lazy">
+                    <div class="browse-spot-meta">
+                      <b>{{ m.name }}</b>
+                      <span>{{ m.brand_name or 'Independent marketer' }}</span>
+                    </div>
+                  </a>
+                  {% endfor %}
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <script>
+          (function () {
+            var root = document.getElementById('browse-featured-carousel');
+            if (!root) return;
+            var track = root.querySelector('.browse-carousel-track');
+            var slides = root.querySelectorAll('.browse-carousel-slide');
+            var prevBtn = root.querySelector('.browse-carousel-prev');
+            var nextBtn = root.querySelector('.browse-carousel-next');
+            var dotsHost = root.querySelector('.browse-carousel-dots');
+            var n = slides.length;
+            if (!track || n === 0) return;
+            var i = 0;
+            var intervalMs = parseInt(root.getAttribute('data-interval-ms') || '5600', 10);
+            var timer = null;
+            var reduced = false;
+            try {
+              reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            } catch (e) {}
+            if (reduced) root.classList.add('browse-carousel--no-motion');
+
+            function go(to) {
+              i = (to % n + n) % n;
+              track.style.transform = 'translateX(' + (-i * 100) + '%)';
+              var dots = dotsHost.querySelectorAll('.browse-carousel-dot');
+              for (var d = 0; d < dots.length; d++) {
+                dots[d].setAttribute('aria-current', d === i ? 'true' : 'false');
+              }
+              for (var s = 0; s < slides.length; s++) {
+                var active = s === i;
+                slides[s].setAttribute('aria-hidden', active ? 'false' : 'true');
+                try {
+                  if ('inert' in slides[s]) slides[s].inert = !active;
+                } catch (e1) {}
+                var focusables = slides[s].querySelectorAll('a[href]');
+                for (var f = 0; f < focusables.length; f++) {
+                  if (active) focusables[f].removeAttribute('tabindex');
+                  else focusables[f].setAttribute('tabindex', '-1');
+                }
+              }
+            }
+
+            if (n <= 1) {
+              root.querySelector('.browse-carousel-controls').setAttribute('hidden', '');
+              track.style.transform = 'translateX(0)';
+              slides[0].setAttribute('aria-hidden', 'false');
+              try {
+                if ('inert' in slides[0]) slides[0].inert = false;
+              } catch (e2) {}
+              var onlyLinks = slides[0].querySelectorAll('a[href]');
+              for (var k = 0; k < onlyLinks.length; k++) onlyLinks[k].removeAttribute('tabindex');
+              return;
+            }
+
+            for (var d = 0; d < n; d++) {
+              var b = document.createElement('button');
+              b.type = 'button';
+              b.className = 'browse-carousel-dot';
+              b.setAttribute('aria-label', 'Show featured group ' + (d + 1) + ' of ' + n);
+              (function (idx) {
+                b.addEventListener('click', function () {
+                  go(idx);
+                  armTimer();
+                });
+              })(d);
+              dotsHost.appendChild(b);
+            }
+
+            function disarmTimer() {
+              if (timer) clearInterval(timer);
+              timer = null;
+            }
+            function armTimer() {
+              disarmTimer();
+              if (reduced || n <= 1) return;
+              timer = setInterval(function () {
+                go(i + 1);
+              }, intervalMs);
+            }
+
+            prevBtn.addEventListener('click', function () {
+              go(i - 1);
+              armTimer();
+            });
+            nextBtn.addEventListener('click', function () {
+              go(i + 1);
+              armTimer();
+            });
+
+            root.addEventListener('mouseenter', disarmTimer);
+            root.addEventListener('mouseleave', armTimer);
+            root.addEventListener('focusin', disarmTimer);
+            root.addEventListener('focusout', function (e) {
+              if (!root.contains(e.relatedTarget)) armTimer();
+            });
+
+            document.addEventListener('visibilitychange', function () {
+              if (document.hidden) disarmTimer();
+              else armTimer();
+            });
+
+            go(0);
+            armTimer();
+          })();
+          </script>
+          {% else %}
+          <p class="browse-visual-kicker">Featured from the directory</p>
+          <p class="browse-spotlight-empty">No marketers listed yet. Run <code>python seed.py</code> to load sample profiles.</p>
+          {% endif %}
+          <aside class="browse-reviews-placeholder" aria-label="Sample testimonials (placeholder)">
+            <div class="browse-reviews-placeholder-head">
+              <h2 class="browse-reviews-placeholder-title">What artists say</h2>
+              <p class="browse-reviews-placeholder-note">Placeholder copy—swap for real reviews.</p>
+            </div>
+            <div class="browse-reviews-grid">
+              <blockquote class="browse-review-fake">
+                <span class="browse-review-fake-stars" aria-hidden="true">★★★★★</span>
+                <p class="browse-review-fake-quote">“Found a playlist pitching specialist in one afternoon. The proof signals made it obvious who had actually delivered campaigns.”</p>
+                <p class="browse-review-fake-by"><strong>Jordan K.</strong> · indie pop artist, Toronto</p>
+              </blockquote>
+              <blockquote class="browse-review-fake">
+                <span class="browse-review-fake-stars" aria-hidden="true">★★★★★</span>
+                <p class="browse-review-fake-quote">“We lined up three marketers on genre fit and pricing before sending a single DM. Cut so much back-and-forth.”</p>
+                <p class="browse-review-fake-by"><strong>The Late Shift</strong> · four-piece band</p>
+              </blockquote>
+              <blockquote class="browse-review-fake">
+                <span class="browse-review-fake-stars" aria-hidden="true">★★★★☆</span>
+                <p class="browse-review-fake-quote">“Starting with a brief meant the first proposals referenced our single and timeline—not generic pitch decks.”</p>
+                <p class="browse-review-fake-by"><strong>Mira V.</strong> · R&amp;B vocalist</p>
+              </blockquote>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if view_all %}
+  <section class="browse-hero">
+    <h1>Browse marketers</h1>
+    <p>Explore vetted music marketing specialists by genre, services, pricing, and confidence.</p>
+    <span class="count">{{ marketers|length }} marketer{{ '' if marketers|length == 1 else 's' }} listed</span>
+  </section>
+  {% endif %}
+
+  {% if marketers and view_all %}
+  <section class="marketer-grid" aria-label="Marketer directory">
+    {% for m in marketers %}
+    <article class="m-card">
+      <div class="m-card-head">
+        <div class="m-person">
+          <img class="m-avatar" src="https://i.pravatar.cc/96?img={{ (m.id % 70) + 1 }}" alt="Sample profile for {{ m.name }}" loading="lazy">
+          <div>
+            <h2 class="m-name"><a href="/search/marketer/{{ m.id }}">{{ m.name }}</a></h2>
+            <p class="m-brand">{{ m.brand_name or 'Independent marketer' }}</p>
+          </div>
+        </div>
+        <span class="m-price">${{ m.price_min or 0 }}–${{ m.price_max or 0 }}</span>
+      </div>
+
+      <div class="m-body">
+        <div class="m-badges">
+          {% for g in m.genres[:4] %}
+            <span class="badge">{{ g }}</span>
+          {% endfor %}
+          {% if m.genres and m.genres|length > 4 %}
+            <span class="badge">+{{ m.genres|length - 4 }}</span>
+          {% endif %}
+        </div>
+        <p class="m-bio">{{ m.bio[:130] if m.bio else 'No summary provided yet.' }}{% if m.bio and m.bio|length > 130 %}…{% endif %}</p>
+
+        <div class="m-stats">
+          <div class="m-stat">
+            <b>{{ m.proof_strength or 0 }}%</b>
+            <span>Proof strength</span>
+          </div>
+          <div class="m-stat">
+            <b>{{ m.confidence_score or 0 }}%</b>
+            <span>Confidence</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="m-foot">
+        <span class="m-meta">{{ (m.services|length) if m.services else 0 }} service{{ '' if m.services and m.services|length == 1 else 's' }}</span>
+        <a href="/search/marketer/{{ m.id }}" class="btn btn-secondary btn-sm">View profile</a>
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+  {% elif view_all %}
+  <div class="empty-state">
+    <p>No approved marketers yet. Run <code>python seed.py</code> to load sample data.</p>
   </div>
-  {% endfor %}
-{% else %}
-  <div class="card"><p>No approved marketers yet. Run <code>python seed.py</code> to load sample data.</p></div>
-{% endif %}
+  {% endif %}
+</div>
 {% endblock %}

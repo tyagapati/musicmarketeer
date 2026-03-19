@@ -24,7 +24,7 @@ def seed_marketers():
             'price_min': 150,
             'price_max': 600,
             'price_model': 'fixed',
-            'preferred_maturity': ['early', 'mid'],
+ 'preferred_maturity': ['early', 'mid'],
             'portfolio_urls': ['https://playlistpro.example.com/portfolio'],
             'evidence_summary': 'Strong track record with 200+ successful playlist adds',
             'proof_strength': 70,

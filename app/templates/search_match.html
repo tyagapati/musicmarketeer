@@ -1,24 +1,164 @@
 {% extends "base.html" %}
 {% block title %}Matches for {{ brief.artist_name }} – SoundMatch{% endblock %}
+{% block container_class %}container--wide{% endblock %}
+{% block extra_head %}
+<style>
+  .match-shell{
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+  .match-hero{
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 18px;
+    padding: 1.15rem 1.25rem;
+    background:
+      radial-gradient(700px 220px at 10% 0%, rgba(34,211,238,.14), transparent 60%),
+      radial-gradient(700px 220px at 90% 0%, rgba(167,139,250,.14), transparent 62%),
+      linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+    margin-bottom: 1rem;
+  }
+  .match-hero h1{ margin: 0 0 .35rem; }
+  .match-hero p{ margin: 0; color: var(--muted); }
+  .match-grid{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: .9rem;
+  }
+  .mm-card{
+    border: 1px solid rgba(34,211,238,.20);
+    border-radius: 16px;
+    background:
+      linear-gradient(160deg, rgba(34,211,238,.08), rgba(167,139,250,.08) 45%, rgba(11,16,34,.82)),
+      linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+    box-shadow: 0 18px 40px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.05);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .mm-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:.6rem;
+    padding: .95rem .95rem .5rem;
+  }
+  .mm-person{
+    display:flex;
+    align-items:center;
+    gap:.65rem;
+    min-width:0;
+  }
+  .mm-avatar{
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,.16);
+    box-shadow: 0 6px 16px rgba(0,0,0,.32);
+    flex-shrink: 0;
+  }
+  .mm-name{
+    margin: 0;
+    font-size: 1.02rem;
+    line-height:1.25;
+    color:#eff3ff;
+  }
+  .mm-name a{ color:inherit; text-decoration:none; }
+  .mm-name a:hover{ text-decoration: underline; }
+  .mm-brand{
+    margin:.18rem 0 0;
+    color:var(--muted2);
+    font-size:.85rem;
+  }
+  .mm-score{
+    flex-shrink:0;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 999px;
+    padding: .23rem .58rem;
+    font-size: .83rem;
+    color:#DDF0FF;
+    background: rgba(255,255,255,.04);
+  }
+  .mm-body{ padding: 0 .95rem .75rem; }
+  .mm-bio{
+    margin: .45rem 0 .68rem;
+    color: var(--muted);
+    font-size:.92rem;
+    line-height:1.55;
+  }
+  .mm-reasons{
+    margin: .45rem 0 .3rem;
+    display:flex;
+    flex-wrap:wrap;
+    gap:.35rem;
+  }
+  .reason-pill{
+    font-size:.76rem;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:999px;
+    padding:.2rem .52rem;
+    color:#dbe6ff;
+    background: rgba(255,255,255,.04);
+  }
+  .mm-foot{
+    margin-top:auto;
+    padding:.82rem .95rem .95rem;
+    border-top:1px solid rgba(255,255,255,.10);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:.6rem;
+  }
+  .mm-meta{ font-size:.8rem; color:var(--muted2); }
+  .mm-actions{ display:flex; gap:.45rem; flex-wrap: wrap; }
+  .match-bottom-link{ margin-top:1rem; display:inline-block; }
+  @media (max-width: 980px){ .match-grid{ grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
 {% block content %}
-<h1>Top matches for {{ brief.artist_name }}</h1>
-<p>Genres: {{ brief.genres | join(", ") }} · Budget: ${{ brief.budget_min }}–${{ brief.budget_max }} · Tier: {{ brief.maturity_tier }}</p>
-{% if results %}
-  {% for r in results %}
-  <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-          <h2><a href="/search/marketer/{{ r.marketer.id }}">{{ r.marketer.name }}</a> – {{ r.marketer.brand_name or '' }}</h2>
-          <span class="score">{{ (r.match_score * 100) | int }}%</span>
-      </div>
-      <p style="margin-bottom:0.5rem;">
-          {% for genre in r.marketer.genres %}<span class="badge">{{ genre }}</span>{% endfor %}
-      </p>
-      <p>{% for reason in r.top_reasons %}✓ {{ reason }}&nbsp;&nbsp;{% endfor %}</p>
-      <p style="font-size:0.85rem;color:#6b7280;">${{ r.marketer.price_min }}–${{ r.marketer.price_max }}</p>
-  </div>
-  {% endfor %}
-{% else %}
-  <div class="card"><p>No matches found. Try broadening your genres or budget.</p></div>
-{% endif %}
-<a href="/artist/intake">← New brief</a>
+<div class="match-shell">
+  <section class="match-hero">
+    <h1>Top matches for {{ brief.artist_name }}</h1>
+    <p>Genres: {{ brief.genres | join(", ") }} · Budget: ${{ brief.budget_min }}–${{ brief.budget_max }} · Tier: {{ brief.maturity_tier }}</p>
+  </section>
+  {% if results %}
+    <section class="match-grid" aria-label="Matched marketers">
+      {% for r in results %}
+      <article class="mm-card">
+        <div class="mm-head">
+          <div class="mm-person">
+            <img class="mm-avatar" src="https://i.pravatar.cc/96?img={{ (r.marketer.id % 70) + 1 }}" alt="Sample profile for {{ r.marketer.name }}" loading="lazy">
+            <div>
+              <h2 class="mm-name"><a href="/search/marketer/{{ r.marketer.id }}">{{ r.marketer.name }}</a></h2>
+              <p class="mm-brand">{{ r.marketer.brand_name or 'Independent marketer' }}</p>
+            </div>
+          </div>
+          <span class="mm-score">{{ (r.match_score * 100) | int }}% match</span>
+        </div>
+        <div class="mm-body">
+          <p>
+            {% for genre in r.marketer.genres[:4] %}<span class="badge">{{ genre }}</span>{% endfor %}
+            {% if r.marketer.genres and r.marketer.genres|length > 4 %}<span class="badge">+{{ r.marketer.genres|length - 4 }}</span>{% endif %}
+          </p>
+          <p class="mm-bio">{{ r.marketer.bio[:140] if r.marketer.bio else 'No bio provided yet.' }}{% if r.marketer.bio and r.marketer.bio|length > 140 %}…{% endif %}</p>
+          <div class="mm-reasons">
+            {% for reason in r.top_reasons[:3] %}
+              <span class="reason-pill">✓ {{ reason }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="mm-foot">
+          <span class="mm-meta">${{ r.marketer.price_min or 0 }}–${{ r.marketer.price_max or 0 }} · {{ (r.marketer.services|length) if r.marketer.services else 0 }} services</span>
+          <div class="mm-actions">
+            <a href="/search/marketer/{{ r.marketer.id }}" class="btn btn-secondary btn-sm">View profile</a>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+  {% else %}
+    <div class="card"><p>No matches found. Try broadening your genres or budget.</p></div>
+  {% endif %}
+  <a href="/artist/intake" class="match-bottom-link">← New brief</a>
+</div>
 {% endblock %}

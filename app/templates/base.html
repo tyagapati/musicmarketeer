@@ -5,44 +5,224 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SoundMatch{% endblock %}</title>
     <style>
+        :root{
+            --bg0:#070A13;
+            --bg1:#0B1022;
+            --panel:rgba(255,255,255,.04);
+            --panel2:rgba(255,255,255,.06);
+            --border:rgba(255,255,255,.10);
+            --text:#EAF0FF;
+            --muted:#A9B4D0;
+            --muted2:#7D8AB0;
+            --brand:#22D3EE;
+            --brand2:#A78BFA;
+            --good:#34D399;
+            --warn:#FBBF24;
+            --bad:#FB7185;
+        }
+
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: #111827; color: #e5e7eb; min-height: 100vh; }
-        nav { background: #1f2937; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; border-bottom: 1px solid #374151; }
-        nav a { color: #9ca3af; text-decoration: none; font-size: 0.9rem; }
-        nav a:hover, nav a.active { color: #fff; }
-        nav .brand { font-size: 1.2rem; font-weight: 700; color: #6366f1; margin-right: auto; }
-        .container { max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; }
-        h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 1rem; color: #fff; }
-        h2 { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.75rem; color: #e5e7eb; }
-        p { color: #9ca3af; margin-bottom: 0.75rem; line-height: 1.6; }
-        a { color: #818cf8; text-decoration: none; }
+        html { color-scheme: dark; }
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            min-height: 100vh;
+            color: var(--text);
+            background:
+                radial-gradient(900px 500px at 20% 0%, rgba(34,211,238,.20), transparent 55%),
+                radial-gradient(900px 520px at 80% 0%, rgba(167,139,250,.20), transparent 55%),
+                linear-gradient(180deg, var(--bg0), var(--bg1) 45%, #070A13);
+        }
+
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            background: rgba(7,10,19,.66);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner{
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0.9rem 1.25rem;
+            display:flex;
+            align-items:center;
+            gap: 0.9rem;
+        }
+        nav a { color: var(--muted); text-decoration: none; font-size: 0.92rem; }
+        nav a:hover { color: var(--text); }
+        nav .brand {
+            display:flex;
+            align-items:center;
+            gap: 0.55rem;
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: .2px;
+            color: var(--text);
+            margin-right: auto;
+        }
+        .brand-mark{
+            width: 28px;
+            height: 28px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(34,211,238,.95), rgba(167,139,250,.95));
+            box-shadow: 0 10px 26px rgba(167,139,250,.18);
+        }
+        .nav-links{ display:flex; gap: 0.25rem; flex-wrap: wrap; align-items: center; }
+        .nav-link{
+            padding: 0.45rem 0.7rem;
+            border-radius: 10px;
+            position: relative;
+            transition: color 0.15s ease, background-color 0.15s ease;
+        }
+        .nav-link:hover{ background: rgba(255,255,255,.04); text-decoration: none; }
+        /* Short tint, quick fade to clear; underline (::after) stays */
+        @keyframes nav-link-active-bg {
+            0%, 78.95% { background-color: rgba(34,211,238,.07); }
+            100% { background-color: transparent; }
+        }
+        /* Current section (landing “/” matches none of these) */
+        .nav-link.nav-link--active{
+            color: var(--text);
+            animation: nav-link-active-bg 0.57s ease-out forwards;
+        }
+        .nav-link.nav-link--active:hover{
+            background: rgba(34,211,238,.1);
+            text-decoration: none;
+        }
+        @media (prefers-reduced-motion: reduce){
+            .nav-link.nav-link--active{
+                animation: none;
+                background: transparent;
+            }
+        }
+        .nav-link.nav-link--active::after{
+            content: "";
+            position: absolute;
+            left: 0.55rem;
+            right: 0.55rem;
+            bottom: 0.2rem;
+            height: 2px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--brand), var(--brand2));
+            pointer-events: none;
+        }
+
+        .container { max-width: 1080px; margin: 1.75rem auto 3rem; padding: 0 1.25rem; }
+        .container--wide { max-width: 1280px; }
+
+        h1 { font-size: clamp(1.7rem, 2vw + 1rem, 2.4rem); font-weight: 850; margin-bottom: 0.75rem; letter-spacing: -0.02em; }
+        h2 { font-size: 1.25rem; font-weight: 750; margin-bottom: 0.6rem; color: var(--text); }
+        p { color: var(--muted); margin-bottom: 0.85rem; line-height: 1.7; }
+        a { color: color-mix(in oklab, var(--brand) 70%, white); text-decoration: none; }
         a:hover { text-decoration: underline; }
-        .card { background: #1f2937; border: 1px solid #374151; border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; }
-        .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: #374151; color: #9ca3af; margin: 0.15rem; }
-        .badge.approved { background: #064e3b; color: #6ee7b7; }
-        .badge.pending { background: #78350f; color: #fcd34d; }
-        .btn { display: inline-block; padding: 0.5rem 1.2rem; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; }
-        .btn-primary { background: #6366f1; color: #fff; }
-        .btn-primary:hover { background: #4f46e5; text-decoration: none; }
-        .btn-sm { padding: 0.3rem 0.8rem; font-size: 0.8rem; }
-        .btn-success { background: #065f46; color: #6ee7b7; }
-        .btn-danger { background: #7f1d1d; color: #fca5a5; }
-        form label { display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.3rem; }
-        form input, form select, form textarea { width: 100%; padding: 0.5rem 0.75rem; background: #111827; border: 1px solid #374151; border-radius: 6px; color: #e5e7eb; font-size: 0.9rem; margin-bottom: 1rem; }
-        form input:focus, form select:focus, form textarea:focus { outline: none; border-color: #6366f1; }
+
+        .card {
+            background: linear-gradient(180deg, var(--panel2), var(--panel));
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 12px 35px rgba(0,0,0,.22);
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.22rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 650;
+            background: rgba(255,255,255,.05);
+            color: var(--muted);
+            margin: 0.15rem;
+            border: 1px solid rgba(255,255,255,.08);
+        }
+        .badge.approved { background: rgba(52,211,153,.12); color: color-mix(in oklab, var(--good) 85%, white); border-color: rgba(52,211,153,.20); }
+        .badge.pending { background: rgba(251,191,36,.12); color: color-mix(in oklab, var(--warn) 85%, white); border-color: rgba(251,191,36,.22); }
+
+        .btn {
+            display: inline-flex;
+            align-items:center;
+            justify-content:center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.05rem;
+            border-radius: 12px;
+            font-size: 0.92rem;
+            font-weight: 750;
+            cursor: pointer;
+            border: 1px solid transparent;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .btn:hover { text-decoration: none; }
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(34,211,238,.95), rgba(167,139,250,.95));
+            color: #071021;
+            box-shadow: 0 18px 55px rgba(34,211,238,.10);
+        }
+        .btn-primary:hover { filter: brightness(1.03); transform: translateY(-1px); }
+        .btn-secondary{
+            background: rgba(255,255,255,.04);
+            border-color: rgba(255,255,255,.10);
+            color: var(--text);
+        }
+        .btn-secondary:hover{ background: rgba(255,255,255,.06); }
+        .btn-sm { padding: 0.42rem 0.75rem; font-size: 0.85rem; border-radius: 10px; }
+        .btn-success { background: rgba(52,211,153,.14); border-color: rgba(52,211,153,.22); color: color-mix(in oklab, var(--good) 85%, white); }
+        .btn-danger { background: rgba(251,113,133,.14); border-color: rgba(251,113,133,.25); color: color-mix(in oklab, var(--bad) 85%, white); }
+
+        form label { display: block; font-size: 0.86rem; color: var(--muted); margin-bottom: 0.3rem; }
+        form input, form select, form textarea {
+            width: 100%;
+            padding: 0.65rem 0.8rem;
+            background: rgba(0,0,0,.18);
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+        form select{
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding-right: 2.2rem;
+            background-image: linear-gradient(45deg, transparent 50%, #9fb1da 50%), linear-gradient(135deg, #9fb1da 50%, transparent 50%);
+            background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px);
+            background-size: 6px 6px, 6px 6px;
+            background-repeat: no-repeat;
+        }
+        form select option{
+            background: #101730;
+            color: var(--text);
+        }
+        form input:focus, form select:focus, form textarea:focus { outline: none; border-color: rgba(34,211,238,.55); box-shadow: 0 0 0 3px rgba(34,211,238,.12); }
         .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .score { font-size: 1.5rem; font-weight: 700; color: #6366f1; }
-        .flash { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; background: #064e3b; color: #6ee7b7; border: 1px solid #065f46; }
+        @media (max-width: 820px){ .grid2{ grid-template-columns: 1fr; } }
+        .score { font-size: 1.6rem; font-weight: 900; color: color-mix(in oklab, var(--brand2) 72%, white); }
+        .flash {
+            padding: 0.75rem 1rem;
+            border-radius: 14px;
+            margin-bottom: 1rem;
+            background: rgba(52,211,153,.12);
+            color: color-mix(in oklab, var(--good) 85%, white);
+            border: 1px solid rgba(52,211,153,.22);
+        }
     </style>
+    {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 <nav>
-    <a href="/" class="brand">SoundMatch</a>
-    <a href="/artist/intake">Campaign builder</a>
-    <a href="/search/browse">Browse marketers</a>
-    <a href="/admin/">Admin</a>
+    <div class="nav-inner">
+        <a href="/" class="brand"><span class="brand-mark" aria-hidden="true"></span>SoundMatch</a>
+        {% set nav_path = request.path %}
+        <div class="nav-links">
+            <a href="/artist/intake" class="nav-link{% if nav_path.startswith('/artist') %} nav-link--active{% endif %}">Campaign builder</a>
+            <a href="/search/browse" class="nav-link{% if nav_path.startswith('/search') %} nav-link--active{% endif %}">Browse marketers</a>
+            <a href="/admin/" class="nav-link{% if nav_path.startswith('/admin') %} nav-link--active{% endif %}">Admin</a>
+        </div>
+    </div>
 </nav>
-<div class="container">
+<div class="container {% block container_class %}{% endblock %}">
     {% with messages = get_flashed_messages() %}
       {% if messages %}{% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}{% endif %}
     {% endwith %}

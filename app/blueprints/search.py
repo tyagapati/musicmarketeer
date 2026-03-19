@@ -1,5 +1,5 @@
 """Search and browse marketers blueprint."""
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request
 from app.models import Marketer, CampaignBrief
 from app.services.matching import rank_marketers
 
@@ -15,8 +15,9 @@ def match(brief_id):
 
 @search_bp.route("/browse")
 def browse():
+    view_all = request.args.get("view") == "all"
     marketers = Marketer.query.filter_by(status="approved").limit(50).all()
-    return render_template("search_browse.html", marketers=marketers)
+    return render_template("search_browse.html", marketers=marketers, view_all=view_all)
 
 
 @search_bp.route("/marketer/<int:id>")

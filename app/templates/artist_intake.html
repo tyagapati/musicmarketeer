@@ -1,5 +1,129 @@
 {% extends "base.html" %}
 {% block title %}Campaign builder – SoundMatch{% endblock %}
+{% block extra_head %}
+<style>
+    .intake-dd{
+        position: relative;
+        margin-bottom: 1rem;
+        z-index: 1;
+    }
+    .intake-dd.is-open{
+        z-index: 30;
+    }
+    .intake-dd-btn{
+        position: relative;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.65rem;
+        padding: 0.65rem 0.8rem;
+        background: rgba(0,0,0,.18);
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 12px;
+        color: var(--text);
+        font-size: 0.95rem;
+        text-align: left;
+        cursor: pointer;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+    .intake-dd-btn:hover{
+        border-color: rgba(255,255,255,.18);
+        background: rgba(0,0,0,.22);
+    }
+    .intake-dd-btn:focus-visible{
+        outline: none;
+        border-color: rgba(34,211,238,.55);
+        box-shadow: 0 0 0 3px rgba(34,211,238,.12);
+    }
+    .intake-dd.is-open .intake-dd-btn{
+        border-color: rgba(34,211,238,.45);
+        box-shadow: 0 0 0 2px rgba(34,211,238,.08);
+    }
+    .intake-dd-value{
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .intake-dd-chevron{
+        flex-shrink: 0;
+        width: 0.5rem;
+        height: 0.5rem;
+        margin-top: -0.15rem;
+        border-right: 2px solid #9fb1da;
+        border-bottom: 2px solid #9fb1da;
+        transform: rotate(45deg);
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        pointer-events: none;
+    }
+    .intake-dd.is-open .intake-dd-chevron{
+        transform: rotate(-135deg);
+        margin-top: 0.12rem;
+    }
+    .intake-dd-menu{
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: calc(100% + 6px);
+        padding: 0.35rem;
+        background: linear-gradient(180deg, rgba(18,24,48,.98), rgba(12,16,34,.99));
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 12px;
+        box-shadow: 0 16px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(34,211,238,.06);
+        opacity: 0;
+        transform: translateY(-6px) scale(0.985);
+        transform-origin: top center;
+        visibility: hidden;
+        pointer-events: none;
+        transition:
+            opacity 0.22s ease,
+            transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+            visibility 0.28s;
+    }
+    .intake-dd.is-open .intake-dd-menu{
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        visibility: visible;
+        pointer-events: auto;
+    }
+    @media (prefers-reduced-motion: reduce){
+        .intake-dd-menu,
+        .intake-dd-chevron,
+        .intake-dd-btn{
+            transition-duration: 0.01ms !important;
+        }
+        .intake-dd.is-open .intake-dd-menu{
+            transform: none;
+        }
+    }
+    .intake-dd-option{
+        display: block;
+        width: 100%;
+        padding: 0.55rem 0.65rem;
+        margin: 0;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 0.92rem;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+    }
+    .intake-dd-option:hover,
+    .intake-dd-option:focus-visible{
+        outline: none;
+        background: rgba(34,211,238,.1);
+        color: var(--text);
+    }
+    .intake-dd-option.is-selected{
+        color: var(--text);
+        background: rgba(167,139,250,.12);
+    }
+</style>
+{% endblock %}
 {% block content %}
 <h1>Campaign builder</h1>
 <p>Tell us about your music and goals. We'll find your best-fit marketers.</p>
@@ -48,20 +172,95 @@
             <input type="number" name="yt_subscribers" placeholder="0">
         </div>
     </div>
-    <label>Timeline</label>
-    <select name="timeline">
-        <option value="">– select –</option>
-        <option value="asap">ASAP</option>
-        <option value="1_month">Within 1 month</option>
-        <option value="3_months">Within 3 months</option>
-        <option value="flexible">Flexible</option>
-    </select>
-    <label>Past marketing experience</label>
-    <select name="past_marketing_exp">
-        <option value="diy">DIY only</option>
-        <option value="hired_before">Hired someone before</option>
-        <option value="agency">Used an agency</option>
-    </select>
+    <label id="label-timeline">Timeline</label>
+    <div class="intake-dd" data-intake-dd>
+        <input type="hidden" name="timeline" value="" data-dd-input id="in-timeline">
+        <button type="button" class="intake-dd-btn" data-dd-btn aria-expanded="false" aria-haspopup="listbox" aria-labelledby="label-timeline dd-timeline-val" id="dd-timeline-btn">
+            <span class="intake-dd-value" id="dd-timeline-val" data-dd-value>– select –</span>
+            <span class="intake-dd-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="intake-dd-menu" data-dd-menu role="listbox" aria-labelledby="dd-timeline-btn">
+            <button type="button" class="intake-dd-option is-selected" role="option" data-value="" data-label="– select –">– select –</button>
+            <button type="button" class="intake-dd-option" role="option" data-value="asap" data-label="ASAP">ASAP</button>
+            <button type="button" class="intake-dd-option" role="option" data-value="1_month" data-label="Within 1 month">Within 1 month</button>
+            <button type="button" class="intake-dd-option" role="option" data-value="3_months" data-label="Within 3 months">Within 3 months</button>
+            <button type="button" class="intake-dd-option" role="option" data-value="flexible" data-label="Flexible">Flexible</button>
+        </div>
+    </div>
+    <label id="label-past">Past marketing experience</label>
+    <div class="intake-dd" data-intake-dd>
+        <input type="hidden" name="past_marketing_exp" value="diy" data-dd-input id="in-past">
+        <button type="button" class="intake-dd-btn" data-dd-btn aria-expanded="false" aria-haspopup="listbox" aria-labelledby="label-past dd-past-val" id="dd-past-btn">
+            <span class="intake-dd-value" id="dd-past-val" data-dd-value>DIY only</span>
+            <span class="intake-dd-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="intake-dd-menu" data-dd-menu role="listbox" aria-labelledby="dd-past-btn">
+            <button type="button" class="intake-dd-option is-selected" role="option" data-value="diy" data-label="DIY only">DIY only</button>
+            <button type="button" class="intake-dd-option" role="option" data-value="hired_before" data-label="Hired someone before">Hired someone before</button>
+            <button type="button" class="intake-dd-option" role="option" data-value="agency" data-label="Used an agency">Used an agency</button>
+        </div>
+    </div>
     <button type="submit" class="btn btn-primary">Find my matches →</button>
 </form>
+<script>
+(function () {
+  var openRoot = null;
+  function closeAll() {
+    if (!openRoot) return;
+    openRoot.classList.remove('is-open');
+    var b = openRoot.querySelector('[data-dd-btn]');
+    if (b) b.setAttribute('aria-expanded', 'false');
+    openRoot = null;
+  }
+  function syncSelected(root) {
+    var input = root.querySelector('[data-dd-input]');
+    var val = input ? input.value : '';
+    root.querySelectorAll('.intake-dd-option').forEach(function (opt) {
+      var v = opt.getAttribute('data-value');
+      if (v === null) v = '';
+      opt.classList.toggle('is-selected', v === val);
+    });
+  }
+  document.querySelectorAll('[data-intake-dd]').forEach(function (root) {
+    var btn = root.querySelector('[data-dd-btn]');
+    var menu = root.querySelector('[data-dd-menu]');
+    var input = root.querySelector('[data-dd-input]');
+    var valueEl = root.querySelector('[data-dd-value]');
+    if (!btn || !menu || !input || !valueEl) return;
+    syncSelected(root);
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (openRoot === root) {
+        closeAll();
+        return;
+      }
+      closeAll();
+      root.classList.add('is-open');
+      btn.setAttribute('aria-expanded', 'true');
+      openRoot = root;
+    });
+    menu.addEventListener('click', function (e) {
+      e.stopPropagation();
+    });
+    menu.querySelectorAll('.intake-dd-option').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        var v = opt.getAttribute('data-value');
+        var lab = opt.getAttribute('data-label') || opt.textContent.trim();
+        input.value = v;
+        valueEl.textContent = lab;
+        menu.querySelectorAll('.intake-dd-option').forEach(function (o) {
+          o.classList.toggle('is-selected', o === opt);
+        });
+        closeAll();
+      });
+    });
+  });
+  document.addEventListener('click', function () {
+    closeAll();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeAll();
+  });
+})();
+</script>
 {% endblock %}
