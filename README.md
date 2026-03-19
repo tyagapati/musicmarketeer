@@ -160,6 +160,12 @@ The matching engine scores marketers across 9 dimensions:
 
 All weights are configurable via environment variables.
 
+## Deploying to Render (PostgreSQL)
+
+1. Create a **PostgreSQL** instance and set **`DATABASE_URL`** on your web service (Render injects this automatically when you link the DB).
+2. The app normalizes `postgres://` → `postgresql://` and uses **`postgresql+psycopg://`** so SQLAlchemy talks to **psycopg v3** (what `requirements.txt` installs).
+3. On startup, **`db.create_all()`** creates tables if they are missing (there are no committed Alembic revisions yet). After deploy, run **`python seed.py`** once (Render shell or one-off job) if you want sample marketers, or add data via **Admin**.
+
 ## Notes
 
 - Only "approved" marketers appear in public search/matching
