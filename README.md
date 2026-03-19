@@ -164,7 +164,7 @@ All weights are configurable via environment variables.
 
 1. Create a **PostgreSQL** instance and set **`DATABASE_URL`** on your web service (Render injects this automatically when you link the DB).
 2. The app normalizes `postgres://` → `postgresql://` and uses **`postgresql+psycopg://`** so SQLAlchemy talks to **psycopg v3** (what `requirements.txt` installs).
-3. On startup, **`db.create_all()`** creates tables if they are missing (there are no committed Alembic revisions yet). After deploy, run **`python seed.py`** once (Render shell or one-off job) if you want sample marketers, or add data via **Admin**.
+3. On startup, **`db.create_all()`** creates tables if they are missing (there are no committed Alembic revisions yet). If the **`marketers`** table is empty, the app **auto-seeds the same demo catalogue** as `seed.py` (no shell step). Set **`SOUNDMATCH_SKIP_AUTO_SEED=1`** to turn that off. For a full wipe + reseed including sample briefs, run **`python seed.py`** locally or in a one-off job (that script still drops and recreates tables).
 
 ## Notes
 

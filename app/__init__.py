@@ -51,5 +51,21 @@ def create_app(config_overrides=None):
 
     with app.app_context():
         db.create_all()
+        # Demo catalogue for empty DB (e.g. fresh Render Postgres). Set SOUNDMATCH_SKIP_AUTO_SEED=1 to disable.
+        if os.environ.get("SOUNDMATCH_SKIP_AUTO_SEED", "").lower() not in (
+            "1",
+            "true",
+            "yes",
+        ):
+            try:
+                import importlib
+
+                seed_mod = importlib.import_module("seed")
+                seed_mod.ensure_demo_marketers_seeded()
+            except Exception:
+                db.session.rollback()
+                app.logger.exception(
+                    "SOUNDMATCH: auto-seed of demo marketers failed; catalogue may stay empty"
+                )
 
     return app

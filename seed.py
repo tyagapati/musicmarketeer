@@ -240,6 +240,41 @@ def seed_marketers():
     print(f"[OK] Seeded {len(marketers_data)} marketers")
 
 
+def ensure_demo_marketers_seeded():
+    """
+    If the marketers table is empty, insert the same demo rows as seed_marketers().
+
+    Called automatically on app startup (unless SOUNDMATCH_SKIP_AUTO_SEED is set).
+    On PostgreSQL, uses an advisory transaction lock so multiple Gunicorn workers
+    do not each insert a full duplicate catalogue on first boot.
+    """
+    from sqlalchemy import text
+
+    try:
+        if Marketer.query.count() > 0:
+            return
+    except Exception:
+        db.session.rollback()
+        return
+
+    dialect = db.session.get_bind().dialect.name
+    if dialect == "postgresql":
+        db.session.execute(text("SELECT pg_advisory_xact_lock(48291001)"))
+        try:
+            if Marketer.query.count() > 0:
+                db.session.rollback()
+                return
+        except Exception:
+            db.session.rollback()
+            return
+
+    try:
+        seed_marketers()
+    except Exception:
+        db.session.rollback()
+        raise
+
+
 def seed_briefs():
     """Seed 2 sample campaign briefs."""
     briefs_data = [

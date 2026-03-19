@@ -753,7 +753,7 @@
           </script>
           {% else %}
           <p class="browse-visual-kicker">Featured from the directory</p>
-          <p class="browse-spotlight-empty">No marketers listed yet. Run <code>python seed.py</code> to load sample profiles.</p>
+          <p class="browse-spotlight-empty">No marketers in the directory yet. If you disabled auto-seed, run <code>python seed.py</code> or add profiles in Admin.</p>
           {% endif %}
           <aside class="browse-reviews-placeholder" aria-label="Sample testimonials (placeholder)">
             <div class="browse-reviews-placeholder-head">
@@ -839,7 +839,7 @@
   </section>
   {% elif view_all %}
   <div class="empty-state">
-    <p>No approved marketers yet. Run <code>python seed.py</code> to load sample data.</p>
+    <p>No approved marketers yet. They appear here after admin approval, or run <code>python seed.py</code> locally to reset demo data.</p>
   </div>
   {% endif %}
 </div>
