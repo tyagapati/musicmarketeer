@@ -1,266 +1,700 @@
 {% extends "base.html" %}
 {% block title %}Campaign builder – SoundMatch{% endblock %}
+{% block body_class %}page-intake{% endblock %}
+{% block container_class %}container--intake{% endblock %}
 {% block extra_head %}
 <style>
-    .intake-dd{
+    /* Full-page canvas (BandLab-style: one “screen” at a time, not a boxed modal) */
+    .page-intake .container.container--intake{
         position: relative;
-        margin-bottom: 1rem;
         z-index: 1;
+        max-width: min(720px, 100%);
+        margin-top: 0;
+        margin-bottom: 0;
+        padding: 0 clamp(1rem, 4vw, 1.5rem) 2rem;
+        min-height: calc(100vh - 56px);
+        display: flex;
+        flex-direction: column;
     }
-    .intake-dd.is-open{
-        z-index: 30;
+    .page-intake .intake-canvas{
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: #060914;
+        transition: opacity 0.5s ease;
     }
-    .intake-dd-btn{
-        position: relative;
-        width: 100%;
+    .page-intake .intake-canvas__photo{
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(180deg, rgba(6,9,20,.94) 0%, rgba(6,9,20,.88) 40%, rgba(6,9,20,.95) 100%),
+            var(--ob-bg-img, url("https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=2400&q=82"));
+        background-size: cover;
+        background-position: center 35%;
+        transition: background-image 0.6s ease, background-position 0.6s ease;
+    }
+    .page-intake .intake-canvas__wash{
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(900px 480px at 50% -10%, rgba(34,211,238,.14), transparent 50%),
+            radial-gradient(700px 400px at 100% 100%, rgba(167,139,250,.10), transparent 45%);
+    }
+    .page-intake .intake-canvas__grain{
+        position: absolute;
+        inset: 0;
+        opacity: 0.035;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* Onboarding chrome */
+    .ob-chrome{
+        flex-shrink: 0;
+        padding-top: 0.85rem;
+        padding-bottom: 0.5rem;
+    }
+    .ob-chrome-row{
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 0.65rem;
-        padding: 0.65rem 0.8rem;
-        background: rgba(0,0,0,.18);
-        border: 1px solid rgba(255,255,255,.12);
-        border-radius: 12px;
+        gap: 0.75rem;
+        margin-bottom: 0.65rem;
+    }
+    .ob-back{
+        flex-shrink: 0;
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255,255,255,.06);
         color: var(--text);
-        font-size: 0.95rem;
-        text-align: left;
         cursor: pointer;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        transition: background 0.2s ease, transform 0.15s ease;
     }
-    .intake-dd-btn:hover{
-        border-color: rgba(255,255,255,.18);
-        background: rgba(0,0,0,.22);
+    .ob-back:hover{ background: rgba(255,255,255,.10); }
+    .ob-back:active{ transform: scale(0.96); }
+    .ob-back:focus-visible{
+        outline: 2px solid rgba(34,211,238,.5);
+        outline-offset: 2px;
     }
-    .intake-dd-btn:focus-visible{
-        outline: none;
-        border-color: rgba(34,211,238,.55);
-        box-shadow: 0 0 0 3px rgba(34,211,238,.12);
-    }
-    .intake-dd.is-open .intake-dd-btn{
-        border-color: rgba(34,211,238,.45);
-        box-shadow: 0 0 0 2px rgba(34,211,238,.08);
-    }
-    .intake-dd-value{
+    .ob-back[hidden]{ display: none !important; }
+    .ob-back svg{ width: 20px; height: 20px; opacity: 0.9; }
+
+    .ob-progress-wrap{
         flex: 1;
         min-width: 0;
+    }
+    .ob-progress-track{
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.08);
         overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
     }
-    .intake-dd-chevron{
-        flex-shrink: 0;
-        width: 0.5rem;
-        height: 0.5rem;
-        margin-top: -0.15rem;
-        border-right: 2px solid #9fb1da;
-        border-bottom: 2px solid #9fb1da;
-        transform: rotate(45deg);
-        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-        pointer-events: none;
+    .ob-progress-fill{
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--brand), var(--brand2));
+        transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .intake-dd.is-open .intake-dd-chevron{
-        transform: rotate(-135deg);
-        margin-top: 0.12rem;
+    .ob-step-label{
+        margin-top: 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 650;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(224,242,254,.4);
+        text-align: center;
     }
-    .intake-dd-menu{
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: calc(100% + 6px);
-        padding: 0.35rem;
-        background: linear-gradient(180deg, rgba(18,24,48,.98), rgba(12,16,34,.99));
-        border: 1px solid rgba(255,255,255,.12);
-        border-radius: 12px;
-        box-shadow: 0 16px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(34,211,238,.06);
-        opacity: 0;
-        transform: translateY(-6px) scale(0.985);
-        transform-origin: top center;
-        visibility: hidden;
-        pointer-events: none;
-        transition:
-            opacity 0.22s ease,
-            transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
-            visibility 0.28s;
+
+    /* Stage + slides */
+    .ob-stage{
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding-bottom: 0.5rem;
     }
-    .intake-dd.is-open .intake-dd-menu{
-        opacity: 1;
-        transform: translateY(0) scale(1);
-        visibility: visible;
-        pointer-events: auto;
+    .ob-viewport{
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        align-items: stretch;
+    }
+    .ob-track{
+        display: flex;
+        width: 100%;
+        height: 100%;
+        transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: transform;
     }
     @media (prefers-reduced-motion: reduce){
-        .intake-dd-menu,
-        .intake-dd-chevron,
-        .intake-dd-btn{
-            transition-duration: 0.01ms !important;
-        }
-        .intake-dd.is-open .intake-dd-menu{
-            transform: none;
-        }
+        .ob-track{ transition-duration: 0.01ms !important; }
+        .ob-progress-fill{ transition-duration: 0.01ms !important; }
     }
-    .intake-dd-option{
+    .ob-slide{
+        flex: 0 0 100%;
+        width: 100%;
+        min-width: 0;
+        padding: 0.25rem 0 1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+    .ob-slide--welcome .ob-slide-inner{
+        text-align: center;
+        align-items: center;
+    }
+    .ob-slide-inner{
+        width: 100%;
+        max-width: 520px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+    .ob-kicker{
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(34,211,238,.75);
+    }
+    .ob-title{
+        margin: 0;
+        font-size: clamp(1.65rem, 1.1rem + 2.2vw, 2.35rem);
+        font-weight: 800;
+        letter-spacing: -0.035em;
+        line-height: 1.08;
+        color: #f4f8ff;
+    }
+    .ob-sub{
+        margin: -0.35rem 0 0;
+        font-size: 1.02rem;
+        line-height: 1.55;
+        color: var(--muted);
+        max-width: 42ch;
+    }
+    .ob-slide--welcome .ob-sub{ margin-left: auto; margin-right: auto; }
+
+    .ob-fields{
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .ob-fields label{
+        color: rgba(224,242,254,.5);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 650;
+    }
+    .ob-fields input[type="text"],
+    .ob-fields input[type="email"],
+    .ob-fields input[type="number"]{
+        width: 100%;
+        margin-top: 0.35rem;
+        padding: 0.85rem 1rem;
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 14px;
+        background: rgba(0,0,0,.28);
+        color: var(--text);
+        font-size: 1.05rem;
+    }
+    .ob-fields input:focus{
+        outline: none;
+        border-color: rgba(34,211,238,.45);
+        box-shadow: 0 0 0 1px rgba(34,211,238,.12);
+    }
+    .ob-fields .grid2{
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.85rem;
+    }
+    @media (max-width: 520px){
+        .ob-fields .grid2{ grid-template-columns: 1fr; }
+    }
+
+    /* Chip picks (timeline / experience) — BandLab-like tappable rows */
+    .ob-chips{
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+    }
+    .ob-chip{
         display: block;
         width: 100%;
-        padding: 0.55rem 0.65rem;
-        margin: 0;
-        border: none;
-        border-radius: 8px;
-        background: transparent;
-        color: var(--muted);
-        font-size: 0.92rem;
+        padding: 1rem 1.15rem;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,.12);
+        background: rgba(0,0,0,.22);
+        color: var(--text);
+        font-size: 1rem;
         text-align: left;
         cursor: pointer;
-        transition: background 0.15s ease, color 0.15s ease;
+        transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
     }
-    .intake-dd-option:hover,
-    .intake-dd-option:focus-visible{
-        outline: none;
-        background: rgba(34,211,238,.1);
+    .ob-chip:hover{
+        border-color: rgba(255,255,255,.2);
+        background: rgba(255,255,255,.05);
+    }
+    .ob-chip.is-selected{
+        border-color: rgba(34,211,238,.5);
+        background: rgba(34,211,238,.08);
+        box-shadow: 0 0 0 1px rgba(34,211,238,.12);
+    }
+    .ob-chip:active{ transform: scale(0.99); }
+    .ob-chip:focus-visible{
+        outline: 2px solid rgba(34,211,238,.45);
+        outline-offset: 2px;
+    }
+    .ob-chip-title{
+        display: block;
+        font-weight: 650;
+    }
+    .ob-chip-desc{
+        display: block;
+        margin-top: 0.25rem;
+        font-size: 0.82rem;
+        color: var(--muted);
+        font-weight: 400;
+    }
+
+    /* Review */
+    .ob-review{
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,.10);
+        background: rgba(0,0,0,.2);
+        padding: 1rem 1.15rem;
+        font-size: 0.92rem;
+    }
+    .ob-review dl{
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.45rem 1rem;
+        margin: 0;
+    }
+    .ob-review dt{
+        margin: 0;
+        color: var(--muted2);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+    .ob-review dd{
+        margin: 0;
         color: var(--text);
     }
-    .intake-dd-option.is-selected{
-        color: var(--text);
-        background: rgba(167,139,250,.12);
+
+    /* Footer CTA — reset native button so label/background always paint (Windows/Chrome) */
+    .ob-footer{
+        flex-shrink: 0;
+        position: relative;
+        z-index: 3;
+        padding-top: 1rem;
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    }
+    .ob-btn-primary{
+        -webkit-appearance: none;
+        appearance: none;
+        display: block;
+        width: 100%;
+        padding: 1rem 1.25rem;
+        border: 1px solid rgba(255,255,255,.28);
+        border-radius: 14px;
+        font-family: inherit;
+        font-size: 1.05rem;
+        font-weight: 700;
+        line-height: 1.3;
+        cursor: pointer;
+        color: #071021;
+        text-shadow: none;
+        /* Solid fallback + same gradient as .btn-primary so fill is never “missing” */
+        background-color: #22d3ee;
+        background-image: linear-gradient(135deg, rgba(34,211,238,.98), rgba(167,139,250,.95));
+        box-shadow:
+            0 1px 0 rgba(255,255,255,.22) inset,
+            0 14px 36px rgba(34,211,238,.22);
+        transition: filter 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    }
+    .ob-btn-primary:hover{
+        filter: brightness(1.05);
+        box-shadow:
+            0 1px 0 rgba(255,255,255,.28) inset,
+            0 16px 40px rgba(167,139,250,.2);
+    }
+    .ob-btn-primary:active{ transform: scale(0.99); }
+    .ob-btn-primary:focus-visible{
+        outline: 2px solid rgba(255,255,255,.65);
+        outline-offset: 3px;
+    }
+    .ob-btn-primary:disabled{
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
     }
 </style>
 {% endblock %}
 {% block content %}
-<h1>Campaign builder</h1>
-<p>Tell us about your music and goals. We'll find your best-fit marketers.</p>
-<form method="POST" action="/artist/intake">
-    <div class="grid2">
-        <div>
-            <label>Artist name *</label>
-            <input type="text" name="artist_name" required placeholder="e.g. Maya">
-        </div>
-        <div>
-            <label>Email *</label>
-            <input type="email" name="email" required placeholder="you@example.com">
-        </div>
-    </div>
-    <label>Genres (comma-separated) *</label>
-    <input type="text" name="genres" required placeholder="e.g. indie, bedroom-pop">
-    <label>Goals (comma-separated)</label>
-    <input type="text" name="goals" placeholder="e.g. streams, playlist_adds, followers">
-    <label>Services needed (comma-separated)</label>
-    <input type="text" name="services_needed" placeholder="e.g. playlist_pitching, social_media_strategy">
-    <div class="grid2">
-        <div>
-            <label>Budget min ($)</label>
-            <input type="number" name="budget_min" placeholder="200">
-        </div>
-        <div>
-            <label>Budget max ($)</label>
-            <input type="number" name="budget_max" placeholder="1000">
+<div class="intake-canvas" id="intake-canvas" aria-hidden="true" data-ob-canvas>
+    <div class="intake-canvas__photo" id="intake-canvas-photo"></div>
+    <div class="intake-canvas__wash"></div>
+    <div class="intake-canvas__grain"></div>
+</div>
+
+<form class="ob-form" method="POST" action="/artist/intake" id="intake-ob-form" novalidate>
+    <div class="ob-chrome">
+        <div class="ob-chrome-row">
+            <button type="button" class="ob-back" id="ob-back" aria-label="Back" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <div class="ob-progress-wrap">
+                <div class="ob-progress-track" aria-hidden="true">
+                    <div class="ob-progress-fill" id="ob-progress-fill"></div>
+                </div>
+                <p class="ob-step-label" id="ob-step-label" aria-live="polite"></p>
+            </div>
         </div>
     </div>
-    <div class="grid2">
-        <div>
-            <label>Spotify monthly listeners</label>
-            <input type="number" name="spotify_monthly_listeners" placeholder="0">
-        </div>
-        <div>
-            <label>TikTok followers</label>
-            <input type="number" name="tiktok_followers" placeholder="0">
-        </div>
-        <div>
-            <label>Instagram followers</label>
-            <input type="number" name="ig_followers" placeholder="0">
-        </div>
-        <div>
-            <label>YouTube subscribers</label>
-            <input type="number" name="yt_subscribers" placeholder="0">
+
+    <div class="ob-stage">
+        <div class="ob-viewport">
+            <div class="ob-track" id="ob-track">
+                <!-- 0 welcome -->
+                <section class="ob-slide ob-slide--welcome" data-step="0" data-bg="https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
+                    <div class="ob-slide-inner">
+                        <span class="ob-kicker">SoundMatch</span>
+                        <h2 class="ob-title">Let’s set up your campaign</h2>
+                        <p class="ob-sub">A few quick steps—like building a profile on BandLab. We’ll match you with marketers who fit your sound, budget, and goals.</p>
+                    </div>
+                </section>
+                <!-- 1 identity -->
+                <section class="ob-slide" data-step="1" data-bg="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
+                    <div class="ob-slide-inner">
+                        <h2 class="ob-title">Who are you?</h2>
+                        <p class="ob-sub">We’ll use this to personalize your matches and follow up.</p>
+                        <div class="ob-fields">
+                            <div>
+                                <label for="artist_name">Artist name</label>
+                                <input type="text" id="artist_name" name="artist_name" required autocomplete="nickname" placeholder="Your artist or project name">
+                            </div>
+                            <div>
+                                <label for="email">Email</label>
+                                <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <!-- 2 genres -->
+                <section class="ob-slide" data-step="2" data-bg="https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
+                    <div class="ob-slide-inner">
+                        <h2 class="ob-title">What genres define you?</h2>
+                        <p class="ob-sub">Comma-separated is fine—we use this for genre fit scoring.</p>
+                        <div class="ob-fields">
+                            <div>
+                                <label for="genres">Genres</label>
+                                <input type="text" id="genres" name="genres" required placeholder="e.g. indie, alt-R&amp;B, bedroom pop">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <!-- 3 goals + services -->
+                <section class="ob-slide" data-step="3" data-bg="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
+                    <div class="ob-slide-inner">
+                        <h2 class="ob-title">What are you trying to do?</h2>
+                        <p class="ob-sub">Goals and the kind of help you want—both optional but improve matching.</p>
+                        <div class="ob-fields">
+                            <div>
+                                <label for="goals">Goals</label>
+                                <input type="text" id="goals" name="goals" placeholder="streams, playlist adds, followers…">
+                            </div>
+                            <div>
+                                <label for="services_needed">Services</label>
+                                <input type="text" id="services_needed" name="services_needed" placeholder="playlist pitching, content, ads…">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <!-- 4 budget -->
+                <section class="ob-slide" data-step="4" data-bg="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
+                    <div class="ob-slide-inner">
+                        <h2 class="ob-title">What’s your budget range?</h2>
+                        <p class="ob-sub">Rough numbers are OK. Marketers filter on this.</p>
+                        <div class="ob-fields">
+                            <div class="grid2">
+                                <div>
+                                    <label for="budget_min">Min ($)</label>
+                                    <input type="number" id="budget_min" name="budget_min" min="0" placeholder="0">
+                                </div>
+                                <div>
+                                    <label for="budget_max">Max ($)</label>
+                                    <input type="number" id="budget_max" name="budget_max" min="0" placeholder="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <!-- 5 social -->
+                <section class="ob-slide" data-step="5" data-bg="https://images.unsplash.com/photo-1614680376593-902f74cf0d41?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
+                    <div class="ob-slide-inner">
+                        <h2 class="ob-title">Where’s your momentum?</h2>
+                        <p class="ob-sub">Optional stats—helps us gauge campaign maturity.</p>
+                        <div class="ob-fields">
+                            <div class="grid2">
+                                <div>
+                                    <label for="spotify_monthly_listeners">Spotify monthly listeners</label>
+                                    <input type="number" id="spotify_monthly_listeners" name="spotify_monthly_listeners" min="0" placeholder="0">
+                                </div>
+                                <div>
+                                    <label for="tiktok_followers">TikTok followers</label>
+                                    <input type="number" id="tiktok_followers" name="tiktok_followers" min="0" placeholder="0">
+                                </div>
+                                <div>
+                                    <label for="ig_followers">Instagram followers</label>
+                                    <input type="number" id="ig_followers" name="ig_followers" min="0" placeholder="0">
+                                </div>
+                                <div>
+                                    <label for="yt_subscribers">YouTube subscribers</label>
+                                    <input type="number" id="yt_subscribers" name="yt_subscribers" min="0" placeholder="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <!-- 6 timeline -->
+                <section class="ob-slide" data-step="6" data-bg="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
+                    <div class="ob-slide-inner">
+                        <h2 class="ob-title">When do you want to move?</h2>
+                        <p class="ob-sub">Pick the timeline that fits your release or push.</p>
+                        <input type="hidden" name="timeline" id="timeline_input" value="">
+                        <div class="ob-chips" role="radiogroup" aria-label="Timeline">
+                            <button type="button" class="ob-chip" data-field="timeline" data-value="" data-label="Not sure yet"><span class="ob-chip-title">Not sure yet</span><span class="ob-chip-desc">You can refine this later</span></button>
+                            <button type="button" class="ob-chip" data-field="timeline" data-value="asap" data-label="ASAP"><span class="ob-chip-title">ASAP</span><span class="ob-chip-desc">Ready to start this week</span></button>
+                            <button type="button" class="ob-chip" data-field="timeline" data-value="1_month" data-label="Within 1 month"><span class="ob-chip-title">Within 1 month</span><span class="ob-chip-desc">Near-term campaign</span></button>
+                            <button type="button" class="ob-chip" data-field="timeline" data-value="3_months" data-label="Within 3 months"><span class="ob-chip-title">Within 3 months</span><span class="ob-chip-desc">Planning ahead</span></button>
+                            <button type="button" class="ob-chip" data-field="timeline" data-value="flexible" data-label="Flexible"><span class="ob-chip-title">Flexible</span><span class="ob-chip-desc">No fixed deadline</span></button>
+                        </div>
+                    </div>
+                </section>
+                <!-- 7 experience -->
+                <section class="ob-slide" data-step="7" data-bg-plain>
+                    <div class="ob-slide-inner">
+                        <h2 class="ob-title">Ever worked with marketing before?</h2>
+                        <p class="ob-sub">Helps marketers set expectations.</p>
+                        <input type="hidden" name="past_marketing_exp" id="past_input" value="diy">
+                        <div class="ob-chips" role="radiogroup" aria-label="Past marketing experience">
+                            <button type="button" class="ob-chip is-selected" data-field="past" data-value="diy" data-label="DIY only"><span class="ob-chip-title">DIY only</span><span class="ob-chip-desc">Social posts, friends, no paid help</span></button>
+                            <button type="button" class="ob-chip" data-field="past" data-value="hired_before" data-label="Hired before"><span class="ob-chip-title">Hired before</span><span class="ob-chip-desc">Freelancer or one-off project</span></button>
+                            <button type="button" class="ob-chip" data-field="past" data-value="agency" data-label="Agency"><span class="ob-chip-title">Agency</span><span class="ob-chip-desc">Worked with a team or label services</span></button>
+                        </div>
+                    </div>
+                </section>
+                <!-- 8 review -->
+                <section class="ob-slide" data-step="8" data-bg="https://images.unsplash.com/photo-1571330735066-03aaa9429d89?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
+                    <div class="ob-slide-inner">
+                        <h2 class="ob-title">You’re all set</h2>
+                        <p class="ob-sub">Double-check your brief, then we’ll find matches.</p>
+                        <div class="ob-review" id="ob-review" aria-live="polite"></div>
+                    </div>
+                </section>
+            </div>
         </div>
     </div>
-    <label id="label-timeline">Timeline</label>
-    <div class="intake-dd" data-intake-dd>
-        <input type="hidden" name="timeline" value="" data-dd-input id="in-timeline">
-        <button type="button" class="intake-dd-btn" data-dd-btn aria-expanded="false" aria-haspopup="listbox" aria-labelledby="label-timeline dd-timeline-val" id="dd-timeline-btn">
-            <span class="intake-dd-value" id="dd-timeline-val" data-dd-value>– select –</span>
-            <span class="intake-dd-chevron" aria-hidden="true"></span>
-        </button>
-        <div class="intake-dd-menu" data-dd-menu role="listbox" aria-labelledby="dd-timeline-btn">
-            <button type="button" class="intake-dd-option is-selected" role="option" data-value="" data-label="– select –">– select –</button>
-            <button type="button" class="intake-dd-option" role="option" data-value="asap" data-label="ASAP">ASAP</button>
-            <button type="button" class="intake-dd-option" role="option" data-value="1_month" data-label="Within 1 month">Within 1 month</button>
-            <button type="button" class="intake-dd-option" role="option" data-value="3_months" data-label="Within 3 months">Within 3 months</button>
-            <button type="button" class="intake-dd-option" role="option" data-value="flexible" data-label="Flexible">Flexible</button>
-        </div>
+
+    <div class="ob-footer">
+        <button type="button" class="ob-btn-primary" id="ob-continue">Continue</button>
     </div>
-    <label id="label-past">Past marketing experience</label>
-    <div class="intake-dd" data-intake-dd>
-        <input type="hidden" name="past_marketing_exp" value="diy" data-dd-input id="in-past">
-        <button type="button" class="intake-dd-btn" data-dd-btn aria-expanded="false" aria-haspopup="listbox" aria-labelledby="label-past dd-past-val" id="dd-past-btn">
-            <span class="intake-dd-value" id="dd-past-val" data-dd-value>DIY only</span>
-            <span class="intake-dd-chevron" aria-hidden="true"></span>
-        </button>
-        <div class="intake-dd-menu" data-dd-menu role="listbox" aria-labelledby="dd-past-btn">
-            <button type="button" class="intake-dd-option is-selected" role="option" data-value="diy" data-label="DIY only">DIY only</button>
-            <button type="button" class="intake-dd-option" role="option" data-value="hired_before" data-label="Hired someone before">Hired someone before</button>
-            <button type="button" class="intake-dd-option" role="option" data-value="agency" data-label="Used an agency">Used an agency</button>
-        </div>
-    </div>
-    <button type="submit" class="btn btn-primary">Find my matches →</button>
 </form>
+
 <script>
 (function () {
-  var openRoot = null;
-  function closeAll() {
-    if (!openRoot) return;
-    openRoot.classList.remove('is-open');
-    var b = openRoot.querySelector('[data-dd-btn]');
-    if (b) b.setAttribute('aria-expanded', 'false');
-    openRoot = null;
+  var TOTAL = 9;
+  var step = 0;
+  var track = document.getElementById("ob-track");
+  var fill = document.getElementById("ob-progress-fill");
+  var label = document.getElementById("ob-step-label");
+  var backBtn = document.getElementById("ob-back");
+  var continueBtn = document.getElementById("ob-continue");
+  var form = document.getElementById("intake-ob-form");
+  var photo = document.getElementById("intake-canvas-photo");
+  var reviewEl = document.getElementById("ob-review");
+
+  var stepTitles = [
+    "Start",
+    "You",
+    "Sound",
+    "Goals",
+    "Budget",
+    "Stats",
+    "Timeline",
+    "Experience",
+    "Review"
+  ];
+
+  function slideEls() {
+    return track.querySelectorAll(".ob-slide");
   }
-  function syncSelected(root) {
-    var input = root.querySelector('[data-dd-input]');
-    var val = input ? input.value : '';
-    root.querySelectorAll('.intake-dd-option').forEach(function (opt) {
-      var v = opt.getAttribute('data-value');
-      if (v === null) v = '';
-      opt.classList.toggle('is-selected', v === val);
-    });
+
+  function setBgForStep(i) {
+    var slides = slideEls();
+    var el = slides[i];
+    if (!el || !photo) return;
+    if (el.hasAttribute("data-bg-plain")) {
+      photo.style.backgroundImage =
+        "linear-gradient(180deg, rgba(6,9,20,.98) 0%, rgba(8,12,24,.97) 42%, rgba(6,9,20,.99) 100%), " +
+        "radial-gradient(900px 520px at 50% 0%, rgba(34,211,238,.08), transparent 55%), " +
+        "radial-gradient(700px 440px at 100% 100%, rgba(167,139,250,.07), transparent 50%)";
+      return;
+    }
+    var url = el.getAttribute("data-bg");
+    if (!url) return;
+    var u = url.replace(/&amp;/g, "&");
+    photo.style.backgroundImage =
+      "linear-gradient(180deg, rgba(6,9,20,.94) 0%, rgba(6,9,20,.88) 40%, rgba(6,9,20,.95) 100%), url(\"" + u + "\")";
   }
-  document.querySelectorAll('[data-intake-dd]').forEach(function (root) {
-    var btn = root.querySelector('[data-dd-btn]');
-    var menu = root.querySelector('[data-dd-menu]');
-    var input = root.querySelector('[data-dd-input]');
-    var valueEl = root.querySelector('[data-dd-value]');
-    if (!btn || !menu || !input || !valueEl) return;
-    syncSelected(root);
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (openRoot === root) {
-        closeAll();
-        return;
+
+  function render() {
+    track.style.transform = "translateX(-" + step * 100 + "%)";
+    var pct = ((step + 1) / TOTAL) * 100;
+    fill.style.width = pct + "%";
+    label.textContent = "Step " + (step + 1) + " of " + TOTAL + " · " + stepTitles[step];
+    backBtn.hidden = step === 0;
+    continueBtn.textContent = step === TOTAL - 1 ? "Find my matches" : "Continue";
+    setBgForStep(step);
+    if (step === TOTAL - 1) buildReview();
+  }
+
+  function visibleInputs() {
+    var slides = slideEls();
+    var panel = slides[step];
+    if (!panel) return [];
+    return Array.prototype.slice.call(panel.querySelectorAll("input:not([type=hidden])"));
+  }
+
+  function validateStep() {
+    var inputs = visibleInputs();
+    for (var i = 0; i < inputs.length; i++) {
+      if (!inputs[i].checkValidity()) {
+        inputs[i].reportValidity();
+        return false;
       }
-      closeAll();
-      root.classList.add('is-open');
-      btn.setAttribute('aria-expanded', 'true');
-      openRoot = root;
-    });
-    menu.addEventListener('click', function (e) {
-      e.stopPropagation();
-    });
-    menu.querySelectorAll('.intake-dd-option').forEach(function (opt) {
-      opt.addEventListener('click', function () {
-        var v = opt.getAttribute('data-value');
-        var lab = opt.getAttribute('data-label') || opt.textContent.trim();
-        input.value = v;
-        valueEl.textContent = lab;
-        menu.querySelectorAll('.intake-dd-option').forEach(function (o) {
-          o.classList.toggle('is-selected', o === opt);
-        });
-        closeAll();
+    }
+    return true;
+  }
+
+  function buildReview() {
+    function val(id) {
+      var el = document.getElementById(id);
+      return el && el.value ? el.value : "—";
+    }
+    function timelineLabel() {
+      var v = document.getElementById("timeline_input").value;
+      var map = { "": "Not sure", asap: "ASAP", "1_month": "Within 1 month", "3_months": "Within 3 months", flexible: "Flexible" };
+      return map[v] != null ? map[v] : (v || "—");
+    }
+    function pastLabel() {
+      var v = document.getElementById("past_input").value;
+      var map = { diy: "DIY only", hired_before: "Hired before", agency: "Agency" };
+      return map[v] || v || "—";
+    }
+    reviewEl.innerHTML =
+      "<dl>" +
+      "<dt>Artist</dt><dd>" + escapeHtml(val("artist_name")) + "</dd>" +
+      "<dt>Email</dt><dd>" + escapeHtml(val("email")) + "</dd>" +
+      "<dt>Genres</dt><dd>" + escapeHtml(val("genres")) + "</dd>" +
+      "<dt>Goals</dt><dd>" + escapeHtml(val("goals")) + "</dd>" +
+      "<dt>Services</dt><dd>" + escapeHtml(val("services_needed")) + "</dd>" +
+      "<dt>Budget</dt><dd>" + escapeHtml(val("budget_min")) + " – " + escapeHtml(val("budget_max")) + "</dd>" +
+      "<dt>Spotify / TikTok / IG / YT</dt><dd>" +
+      escapeHtml(val("spotify_monthly_listeners")) + " / " +
+      escapeHtml(val("tiktok_followers")) + " / " +
+      escapeHtml(val("ig_followers")) + " / " +
+      escapeHtml(val("yt_subscribers")) +
+      "</dd>" +
+      "<dt>Timeline</dt><dd>" + escapeHtml(timelineLabel()) + "</dd>" +
+      "<dt>Experience</dt><dd>" + escapeHtml(pastLabel()) + "</dd>" +
+      "</dl>";
+  }
+
+  function escapeHtml(s) {
+    if (s == null) return "";
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;");
+  }
+
+  continueBtn.addEventListener("click", function () {
+    if (step < TOTAL - 1) {
+      if (!validateStep()) return;
+      step++;
+      render();
+      return;
+    }
+    form.requestSubmit();
+  });
+
+  backBtn.addEventListener("click", function () {
+    if (step > 0) {
+      step--;
+      render();
+    }
+  });
+
+  form.addEventListener("submit", function (e) {
+    if (!form.checkValidity()) {
+      e.preventDefault();
+      var bad = form.querySelector(":invalid");
+      if (bad) {
+        var slides = slideEls();
+        for (var s = 0; s < slides.length; s++) {
+          if (slides[s].contains(bad)) {
+            step = s;
+            render();
+            break;
+          }
+        }
+        bad.reportValidity();
+      }
+    }
+  });
+
+  /* Chips */
+  document.querySelectorAll(".ob-chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var field = chip.getAttribute("data-field");
+      var value = chip.getAttribute("data-value");
+      if (value === null) value = "";
+      var group = chip.closest(".ob-chips");
+      group.querySelectorAll(".ob-chip").forEach(function (c) {
+        c.classList.toggle("is-selected", c === chip);
       });
+      if (field === "timeline") {
+        document.getElementById("timeline_input").value = value;
+      } else if (field === "past") {
+        document.getElementById("past_input").value = value;
+      }
     });
   });
-  document.addEventListener('click', function () {
-    closeAll();
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && document.activeElement &&
+        document.activeElement.closest && document.activeElement.closest("#intake-ob-form")) {
+      var tag = document.activeElement.tagName;
+      if (tag === "INPUT" && step < TOTAL - 1) {
+        e.preventDefault();
+        continueBtn.click();
+      }
+    }
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeAll();
-  });
+
+  render();
 })();
 </script>
 {% endblock %}
