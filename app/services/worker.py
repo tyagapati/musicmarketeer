@@ -13,5 +13,10 @@ except Exception:
 
 def enqueue(func, *args, **kwargs):
     if queue:
-        return queue.enqueue(func, *args, **kwargs)
+        try:
+            return queue.enqueue(func, *args, **kwargs)
+        except Exception:
+            # Redis may be configured but unavailable locally.
+            # Fall back to synchronous execution to avoid crashing routes.
+            pass
     return func(*args, **kwargs)

@@ -12,5 +12,10 @@
         <p style="margin:0;">Approved</p>
     </div>
 </div>
-<a href="/admin/marketers" class="btn btn-primary">Manage marketers →</a>
+<div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+    <a href="/admin/marketers" class="btn btn-primary">Manage marketers →</a>
+    <form method="POST" action="/admin/ingest" style="margin:0;">
+        <button class="btn btn-sm btn-success">Run discovery cycle</button>
+    </form>
+</div>
 {% endblock %}

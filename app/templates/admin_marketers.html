@@ -2,12 +2,33 @@
 {% block title %}Marketers – Admin – SoundMatch{% endblock %}
 {% block content %}
 <h1>Manage marketers</h1>
+<form method="POST" action="/admin/ingest" style="margin-bottom:1rem;">
+    <button class="btn btn-sm btn-success">Run discovery cycle</button>
+</form>
+{% if result.queued %}
+<div class="card" style="margin-bottom:1rem;">
+    <strong>Discovery queued.</strong> Check back after worker processing.
+</div>
+{% elif result.considered is not none %}
+<div class="card" style="margin-bottom:1rem;">
+    <strong>Last discovery run:</strong>
+    considered={{ result.considered }},
+    created={{ result.created }},
+    skipped_existing={{ result.skipped_existing }},
+    skipped_low_confidence={{ result.skipped_low_confidence }}
+</div>
+{% endif %}
 {% for m in marketers %}
 <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
     <div>
         <strong>{{ m.name }}</strong> – {{ m.brand_name or '' }}
         <span class="badge {{ m.status }}">{{ m.status }}</span>
-        <br><span style="font-size:0.8rem;color:#6b7280;">{{ m.genres | join(", ") }}</span>
+        <br><span style="font-size:0.8rem;color:#6b7280;">genres: {{ m.genres | join(", ") or "n/a" }}</span>
+        <br><span style="font-size:0.8rem;color:#6b7280;">services: {{ m.services | join(", ") or "n/a" }}</span>
+        <br><span style="font-size:0.8rem;color:#6b7280;">source: {{ m.source or "unknown" }} | proof: {{ m.proof_strength or 0 }} | confidence: {{ m.confidence_score or 0 }}</span>
+        {% if m.evidence_summary %}
+        <br><span style="font-size:0.75rem;color:#6b7280;">{{ m.evidence_summary[:180] }}{% if m.evidence_summary|length > 180 %}...{% endif %}</span>
+        {% endif %}
     </div>
     <div style="display:flex;gap:0.5rem;">
         {% if m.status != 'approved' %}

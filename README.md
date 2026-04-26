@@ -148,6 +148,40 @@ soundmatch-mvp/
 - `POST /admin/marketers/<id>/reject` - Reject marketer
 - `POST /admin/ingest` - Trigger ingestion
 
+## Discovery Agent (new)
+
+The ingestion endpoint now runs a reliability-first pipeline:
+
+1. Discover candidate marketer URLs from connector seeds
+2. Vet quality signals (ratings/review counts/evidence)
+3. Categorize into matching fields (`services`, `genres`)
+4. Save as `pending` marketers for admin approval
+
+### Discovery environment variables
+
+- `DISCOVERY_SEED_URLS`: comma-separated candidate websites to evaluate
+- `REDDIT_DISCOVERY_URLS`: optional comma-separated Reddit-found candidate URLs
+- `SERPAPI_API_KEY`: optional SerpAPI key for search-based discovery
+- `DISCOVERY_SEARCH_RESULTS_PER_QUERY`: search results per query (default `5`)
+- `DISCOVERY_MAX_CANDIDATES`: max candidates per cycle (default `25`)
+- `DISCOVERY_MIN_CONFIDENCE`: minimum confidence to persist (default `30`)
+- `DISCOVERY_LLM_API_URL`: optional OpenAI-compatible chat completions URL
+- `DISCOVERY_LLM_API_KEY`: optional API key for LLM extraction
+- `DISCOVERY_LLM_MODEL`: optional model name (default `gpt-4o-mini`)
+- `REDDIT_DISCOVERY_SUBREDDITS`: optional subreddit list for Reddit API search
+
+### Discovery scheduling
+
+Use any scheduler to call `POST /admin/ingest` at your desired cadence:
+
+- Local/VM cron example:
+  - `0 8 * * * curl -X POST http://localhost:8000/admin/ingest`
+- Render example:
+  - Add a cron job hitting your deployed `/admin/ingest` endpoint daily.
+
+The discovery cycle automatically biases search queries toward underrepresented
+service/genre combinations so your marketer pool keeps expanding coverage.
+
 ## Matching Engine
 
 The matching engine scores marketers across 9 dimensions:
