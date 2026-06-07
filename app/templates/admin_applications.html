@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Applications – Admin{% endblock %}
+{% block content %}
+<h1>Marketer applications</h1>
+{% for a in applications %}
+<div class="card" style="margin-bottom:0.75rem;">
+    <strong>{{ a.brand_name }}</strong> <span class="badge {{ a.status }}">{{ a.status }}</span>
+    <br><a href="{{ a.website }}" target="_blank" rel="noopener noreferrer">{{ a.website }}</a>
+    <br><span style="font-size:0.85rem;color:#9ca3af;">services: {{ a.services | join(", ") }} · genres: {{ a.genres | join(", ") }}</span>
+    {% if a.status == 'pending' %}
+    <div style="margin-top:0.5rem;display:flex;gap:0.5rem;">
+        <form method="POST" action="/admin/applications/{{ a.id }}/approve"><button class="btn btn-sm btn-success">Approve</button></form>
+        <form method="POST" action="/admin/applications/{{ a.id }}/reject"><button class="btn btn-sm btn-danger">Reject</button></form>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="card"><p>No applications yet.</p></div>
+{% endfor %}
+<p><a href="/admin/">← Dashboard</a></p>
+{% endblock %}

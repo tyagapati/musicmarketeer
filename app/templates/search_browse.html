@@ -635,10 +635,10 @@
                 <div class="browse-carousel-slide" role="group" aria-label="Featured marketers, group {{ loop.index }} of {{ loop.length }}">
                   {% for m in page %}
                   <a class="browse-spot-card" href="/search/marketer/{{ m.id }}">
-                    <img class="browse-spot-avatar" src="https://i.pravatar.cc/96?img={{ (m.id % 70) + 1 }}" alt="Profile image for {{ m.name }}" width="96" height="96" loading="lazy">
+                    <img class="browse-spot-avatar" src="https://i.pravatar.cc/96?img={{ (m.id % 70) + 1 }}" alt="Profile image for {{ m | marketer_brand }}" width="96" height="96" loading="lazy">
                     <div class="browse-spot-meta">
-                      <b>{{ m.name }}</b>
-                      <span>{{ m.brand_name or 'Independent marketer' }}</span>
+                      <b>{{ m | marketer_brand }}</b>
+                      <span>{{ m | marketer_price }}</span>
                     </div>
                   </a>
                   {% endfor %}
@@ -755,27 +755,27 @@
           <p class="browse-visual-kicker">Featured from the directory</p>
           <p class="browse-spotlight-empty">No marketers in the directory yet. If you disabled auto-seed, run <code>python seed.py</code> or add profiles in Admin.</p>
           {% endif %}
-          <aside class="browse-reviews-placeholder" aria-label="Sample testimonials (placeholder)">
+          <aside class="browse-reviews-placeholder" aria-label="Evidence from vetted marketers">
             <div class="browse-reviews-placeholder-head">
               <h2 class="browse-reviews-placeholder-title">What artists say</h2>
-              <p class="browse-reviews-placeholder-note">Placeholder copy—swap for real reviews.</p>
+              <p class="browse-reviews-placeholder-note">Snippets from vetted marketer evidence.</p>
             </div>
             <div class="browse-reviews-grid">
-              <blockquote class="browse-review-fake">
-                <span class="browse-review-fake-stars" aria-hidden="true">★★★★★</span>
-                <p class="browse-review-fake-quote">“Found a playlist pitching specialist in one afternoon. The proof signals made it obvious who had actually delivered campaigns.”</p>
-                <p class="browse-review-fake-by"><strong>Jordan K.</strong> · indie pop artist, Toronto</p>
-              </blockquote>
-              <blockquote class="browse-review-fake">
-                <span class="browse-review-fake-stars" aria-hidden="true">★★★★★</span>
-                <p class="browse-review-fake-quote">“We lined up three marketers on genre fit and pricing before sending a single DM. Cut so much back-and-forth.”</p>
-                <p class="browse-review-fake-by"><strong>The Late Shift</strong> · four-piece band</p>
-              </blockquote>
-              <blockquote class="browse-review-fake">
-                <span class="browse-review-fake-stars" aria-hidden="true">★★★★☆</span>
-                <p class="browse-review-fake-quote">“Starting with a brief meant the first proposals referenced our single and timeline—not generic pitch decks.”</p>
-                <p class="browse-review-fake-by"><strong>Mira V.</strong> · R&amp;B vocalist</p>
-              </blockquote>
+              {% if testimonials %}
+                {% for t in testimonials %}
+                <blockquote class="browse-review-fake">
+                  <span class="browse-review-fake-stars" aria-hidden="true">★★★★☆</span>
+                  <p class="browse-review-fake-quote">“{{ t.quote }}”</p>
+                  <p class="browse-review-fake-by"><strong>{{ t.brand }}</strong> · proof {{ t.proof }}%</p>
+                </blockquote>
+                {% endfor %}
+              {% else %}
+                <blockquote class="browse-review-fake">
+                  <span class="browse-review-fake-stars" aria-hidden="true">★★★★★</span>
+                  <p class="browse-review-fake-quote">“Found a playlist pitching specialist in one afternoon. The proof signals made it obvious who had actually delivered campaigns.”</p>
+                  <p class="browse-review-fake-by"><strong>Jordan K.</strong> · indie pop artist</p>
+                </blockquote>
+              {% endif %}
             </div>
           </aside>
         </div>
@@ -790,6 +790,17 @@
     <p>Explore vetted music marketing specialists by genre, services, pricing, and confidence.</p>
     <span class="count">{{ marketers|length }} marketer{{ '' if marketers|length == 1 else 's' }} listed</span>
   </section>
+  <form method="GET" class="card" style="margin-bottom:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;">
+    <input type="hidden" name="view" value="all">
+    <label>Genre<br><input name="genre" value="{{ filters.genre }}" placeholder="indie"></label>
+    <label>Service<br><input name="service" value="{{ filters.service }}" placeholder="ads"></label>
+    <label>Min proof<br><input name="min_proof" type="number" value="{{ filters.min_proof }}" placeholder="50"></label>
+    <label>Max budget<br><input name="max_budget" type="number" value="{{ filters.max_budget }}" placeholder="2000"></label>
+    <div style="display:flex;align-items:end;gap:0.5rem;">
+      <button class="btn btn-primary btn-sm" type="submit">Filter</button>
+      <a class="btn btn-secondary btn-sm" href="/search/browse?view=all">Reset</a>
+    </div>
+  </form>
   {% endif %}
 
   {% if marketers and view_all %}
@@ -798,13 +809,12 @@
     <article class="m-card">
       <div class="m-card-head">
         <div class="m-person">
-          <img class="m-avatar" src="https://i.pravatar.cc/96?img={{ (m.id % 70) + 1 }}" alt="Sample profile for {{ m.name }}" loading="lazy">
+          <img class="m-avatar" src="https://i.pravatar.cc/96?img={{ (m.id % 70) + 1 }}" alt="Sample profile for {{ m | marketer_brand }}" loading="lazy">
           <div>
-            <h2 class="m-name"><a href="/search/marketer/{{ m.id }}">{{ m.name }}</a></h2>
-            <p class="m-brand">{{ m.brand_name or 'Independent marketer' }}</p>
+            <h2 class="m-name"><a href="/search/marketer/{{ m.id }}">{{ m | marketer_brand }}</a></h2>
           </div>
         </div>
-        <span class="m-price">${{ m.price_min or 0 }}–${{ m.price_max or 0 }}</span>
+        <span class="m-price">{{ m | marketer_price }}</span>
       </div>
 
       <div class="m-body">

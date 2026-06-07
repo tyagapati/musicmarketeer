@@ -127,10 +127,9 @@
       <article class="mm-card">
         <div class="mm-head">
           <div class="mm-person">
-            <img class="mm-avatar" src="https://i.pravatar.cc/96?img={{ (r.marketer.id % 70) + 1 }}" alt="Sample profile for {{ r.marketer.name }}" loading="lazy">
+            <img class="mm-avatar" src="https://i.pravatar.cc/96?img={{ (r.marketer.id % 70) + 1 }}" alt="Sample profile for {{ r.marketer | marketer_brand }}" loading="lazy">
             <div>
-              <h2 class="mm-name"><a href="/search/marketer/{{ r.marketer.id }}">{{ r.marketer.name }}</a></h2>
-              <p class="mm-brand">{{ r.marketer.brand_name or 'Independent marketer' }}</p>
+              <h2 class="mm-name"><a href="/search/marketer/{{ r.marketer.id }}">{{ r.marketer | marketer_brand }}</a></h2>
             </div>
           </div>
           <span class="mm-score">{{ (r.match_score * 100) | int }}% match</span>
@@ -148,13 +147,30 @@
           </div>
         </div>
         <div class="mm-foot">
-          <span class="mm-meta">${{ r.marketer.price_min or 0 }}–${{ r.marketer.price_max or 0 }} · {{ (r.marketer.services|length) if r.marketer.services else 0 }} services</span>
+          <span class="mm-meta">{{ r.marketer | marketer_price }} · {{ (r.marketer.services|length) if r.marketer.services else 0 }} services</span>
           <div class="mm-actions">
             <a href="/search/marketer/{{ r.marketer.id }}" class="btn btn-secondary btn-sm">View profile</a>
           </div>
         </div>
       </article>
       {% endfor %}
+    </section>
+    <section class="card" style="margin-top:1rem;">
+      <h2>Did you hire one of these marketers?</h2>
+      <form method="POST">
+        <p><label>Marketer<br>
+          <select name="marketer_id" required>
+            {% for r in results %}
+            <option value="{{ r.marketer.id }}">{{ r.marketer.brand_name or r.marketer.name }}</option>
+            {% endfor %}
+          </select>
+        </label></p>
+        <p><label><input type="radio" name="hired" value="yes" checked> Yes, I hired them</label>
+           <label style="margin-left:1rem;"><input type="radio" name="hired" value="no"> Not yet</label></p>
+        <p><label>Rating (1-5)<br><input type="number" name="rating" min="1" max="5"></label></p>
+        <p><label>Notes<br><textarea name="notes" rows="2" style="width:100%;"></textarea></label></p>
+        <button class="btn btn-secondary btn-sm" type="submit">Submit feedback</button>
+      </form>
     </section>
   {% else %}
     <div class="card"><p>No matches found. Try broadening your genres or budget.</p></div>

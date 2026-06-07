@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Admin login – SoundMatch{% endblock %}
+{% block content %}
+<h1>Admin login</h1>
+<form method="POST" class="card" style="max-width:420px;">
+    <label for="password">Password</label><br>
+    <input id="password" type="password" name="password" required style="width:100%;margin:0.5rem 0 1rem;">
+    <button class="btn btn-primary" type="submit">Sign in</button>
+</form>
+{% endblock %}

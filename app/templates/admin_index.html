@@ -14,8 +14,14 @@
 </div>
 <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
     <a href="/admin/marketers" class="btn btn-primary">Manage marketers →</a>
+    <a href="/admin/discovery-report" class="btn btn-secondary">Discovery report</a>
+    <a href="/admin/applications" class="btn btn-secondary">Applications ({{ apps_pending }})</a>
+    <a href="/admin/intros" class="btn btn-secondary">Intro requests</a>
     <form method="POST" action="/admin/ingest" style="margin:0;">
         <button class="btn btn-sm btn-success">Run discovery cycle</button>
+    </form>
+    <form method="POST" action="/admin/logout" style="margin:0;">
+        <button class="btn btn-sm btn-danger">Logout</button>
     </form>
 </div>
 {% endblock %}

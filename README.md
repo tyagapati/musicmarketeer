@@ -175,28 +175,42 @@ The ingestion endpoint now runs a reliability-first pipeline:
 Use any scheduler to call `POST /admin/ingest` at your desired cadence:
 
 - Local/VM cron example:
-  - `0 8 * * * curl -X POST http://localhost:8000/admin/ingest`
+  - `0 8 * * 1 curl -X POST -H "X-Cron-Secret: YOUR_SECRET" http://localhost:8000/admin/ingest`
 - Render example:
-  - Add a cron job hitting your deployed `/admin/ingest` endpoint daily.
+  - Add a weekly cron job hitting `/admin/ingest` with header `X-Cron-Secret`.
+
+Set `DISCOVERY_CRON_SECRET` in `.env` for unattended runs. Set `ADMIN_PASSWORD` to protect admin routes.
 
 The discovery cycle automatically biases search queries toward underrepresented
 service/genre combinations so your marketer pool keeps expanding coverage.
 
+See `/admin/discovery-report` for coverage and gap analysis.
+
 ## Matching Engine
 
-The matching engine scores marketers across 9 dimensions:
+The matching engine scores marketers across 9 weighted dimensions (normalized to 100%):
 
-1. **Genre Fit** (20%) - Genre overlap and adjacency
-2. **Service Fit** (20%) - Coverage of requested services
-3. **Budget Fit** (15%) - Price range compatibility
-4. **Goal Fit** (10%) - Alignment with artist goals
-5. **Maturity Fit** (10%) - Artist tier compatibility
-6. **Proof** (10%) - Admin-assessed proof strength
-7. **Timezone** (5%) - Timezone proximity
-8. **Language** (5%) - Shared languages
-9. **Confidence** (5%) - Platform confidence score
+1. **Genre Fit** (`MATCH_WEIGHT_GENRE`, default 20%)
+2. **Service Fit** (`MATCH_WEIGHT_SERVICE`, default 20%)
+3. **Budget Fit** (`MATCH_WEIGHT_BUDGET`, default 15%)
+4. **Goal Fit** (`MATCH_WEIGHT_GOAL`, default 10%)
+5. **Maturity Fit** (`MATCH_WEIGHT_MATURITY`, default 10%)
+6. **Proof** (`MATCH_WEIGHT_PROOF`, default 10%) — uses `proof_strength`
+7. **Timezone** (`MATCH_WEIGHT_TIMEZONE`, default 5%)
+8. **Language** (`MATCH_WEIGHT_LANGUAGE`, default 5%)
+9. **Confidence** (`MATCH_WEIGHT_CONFIDENCE`, default 5%) — uses `confidence_score`
 
-All weights are configurable via environment variables.
+Hire feedback and artist ratings provide additional ranking boosts over time.
+
+## Artist actions
+
+- **Intro requests**: artists submit from marketer profile pages (`IntroRequest` stored for admin review).
+- **Service visit tracking**: `/search/marketer/<id>/go` redirects through affiliate/booking URL.
+- **Match feedback**: artists can report hire outcomes on match results pages.
+
+## Marketer onboarding
+
+Marketers can apply at `/marketer/apply`. Applications appear in `/admin/applications` for review.
 
 ### Render build stuck on “Installing dependencies”?
 

@@ -27,6 +27,8 @@ def create_app(config_overrides=None):
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
     app.config["SQLALCHEMY_DATABASE_URI"] = _resolve_database_uri()
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
+        app.config.setdefault("SQLALCHEMY_ENGINE_OPTIONS", {"connect_args": {"timeout": 30}})
     if config_overrides:
         app.config.update(config_overrides)
 
@@ -45,12 +47,38 @@ def create_app(config_overrides=None):
     from app.blueprints.admin import admin_bp
     app.register_blueprint(admin_bp, url_prefix="/admin")
 
+    from app.blueprints.marketer import marketer_bp
+    app.register_blueprint(marketer_bp, url_prefix="/marketer")
+
+    from app.services.marketer_display import format_price_range, normalize_brand_name
+
+    @app.template_filter("marketer_brand")
+    def marketer_brand_filter(marketer):
+        return normalize_brand_name(
+            website=getattr(marketer, "website", "") or "",
+            title=getattr(marketer, "name", "") or "",
+            brand_name=getattr(marketer, "brand_name", "") or "",
+            name=getattr(marketer, "name", "") or "",
+        )
+
+    @app.template_filter("marketer_price")
+    def marketer_price_filter(marketer):
+        return format_price_range(
+            getattr(marketer, "price_min", None),
+            getattr(marketer, "price_max", None),
+            getattr(marketer, "price_model", None),
+            getattr(marketer, "price_verified", False),
+        )
+
     # No Alembic revisions are shipped yet; fresh Postgres (e.g. Render) has no tables.
     # create_all is idempotent and fixes "relation marketers does not exist" on first boot.
     from app import models  # noqa: F401 — register models on metadata before create_all
 
     with app.app_context():
         db.create_all()
+        from app.services.schema import ensure_schema
+
+        ensure_schema()
         # Demo catalogue for empty DB (e.g. fresh Render Postgres). Set SOUNDMATCH_SKIP_AUTO_SEED=1 to disable.
         if os.environ.get("SOUNDMATCH_SKIP_AUTO_SEED", "").lower() not in (
             "1",

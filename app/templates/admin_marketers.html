@@ -15,22 +15,32 @@
     considered={{ result.considered }},
     created={{ result.created }},
     skipped_existing={{ result.skipped_existing }},
-    skipped_low_confidence={{ result.skipped_low_confidence }}
+    skipped_low_confidence={{ result.skipped_low_confidence }},
+    skipped_not_profile={{ result.skipped_not_profile }}
 </div>
 {% endif %}
 {% for m in marketers %}
 <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
     <div>
-        <strong>{{ m.name }}</strong> – {{ m.brand_name or '' }}
+        <strong>{{ m | marketer_brand }}</strong>
         <span class="badge {{ m.status }}">{{ m.status }}</span>
+        <span style="font-size:0.82rem;color:#9ca3af;margin-left:0.35rem;">{{ m | marketer_price }}</span>
         <br><span style="font-size:0.8rem;color:#6b7280;">genres: {{ m.genres | join(", ") or "n/a" }}</span>
         <br><span style="font-size:0.8rem;color:#6b7280;">services: {{ m.services | join(", ") or "n/a" }}</span>
-        <br><span style="font-size:0.8rem;color:#6b7280;">source: {{ m.source or "unknown" }} | proof: {{ m.proof_strength or 0 }} | confidence: {{ m.confidence_score or 0 }}</span>
+        <br><span style="font-size:0.8rem;color:#6b7280;">source: {{ m.source or "unknown" }} | proof: {{ m.proof_strength or 0 }} | confidence: {{ m.confidence_score or 0 }} | price: {% if m.price_verified %}verified{% else %}estimated{% endif %}</span>
+        {% if m.website %}
+        <br><a href="{{ m.website }}" target="_blank" rel="noopener noreferrer" style="font-size:0.82rem;">Visit original site ↗</a>
+        {% endif %}
         {% if m.evidence_summary %}
         <br><span style="font-size:0.75rem;color:#6b7280;">{{ m.evidence_summary[:180] }}{% if m.evidence_summary|length > 180 %}...{% endif %}</span>
         {% endif %}
     </div>
-    <div style="display:flex;gap:0.5rem;">
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        {% if not m.price_verified %}
+        <form method="POST" action="/admin/marketers/{{ m.id }}/verify-price">
+            <button class="btn btn-sm btn-secondary">Verify price</button>
+        </form>
+        {% endif %}
         {% if m.status != 'approved' %}
         <form method="POST" action="/admin/marketers/{{ m.id }}/approve">
             <button class="btn btn-sm btn-success">Approve</button>

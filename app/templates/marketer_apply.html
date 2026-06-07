@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Apply as marketer – SoundMatch{% endblock %}
+{% block content %}
+<h1>Apply as a music marketer</h1>
+<form method="POST" class="card">
+    <p><label>Brand name<br><input name="brand_name" required style="width:100%;"></label></p>
+    <p><label>Website<br><input name="website" type="url" required style="width:100%;"></label></p>
+    <p><label>Email<br><input name="email" type="email" style="width:100%;"></label></p>
+    <p><label>Services (comma-separated slugs)<br><input name="services" placeholder="ads, pr, playlist_pitching" style="width:100%;"></label></p>
+    <p><label>Genres (comma-separated)<br><input name="genres" placeholder="indie, hip-hop" style="width:100%;"></label></p>
+    <p><label>Bio<br><textarea name="bio" rows="4" style="width:100%;"></textarea></label></p>
+    <button class="btn btn-primary" type="submit">Submit application</button>
+</form>
+{% endblock %}

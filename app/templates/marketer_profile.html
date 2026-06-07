@@ -1,16 +1,28 @@
 {% extends "base.html" %}
-{% block title %}{{ marketer.name }} – SoundMatch{% endblock %}
+{% block title %}{{ marketer | marketer_brand }} – SoundMatch{% endblock %}
 {% block content %}
-<h1>{{ marketer.name }}</h1>
-<p style="font-size:1.1rem;color:#e5e7eb;margin-bottom:0.25rem;">{{ marketer.brand_name or '' }}</p>
+<h1>{{ marketer | marketer_brand }}</h1>
 <p>{{ marketer.bio or '' }}</p>
 <div class="card">
     <h2>Details</h2>
     <p><strong>Genres:</strong> {% for g in marketer.genres %}<span class="badge">{{ g }}</span>{% endfor %}</p>
     <p><strong>Services:</strong> {% for s in marketer.services %}<span class="badge">{{ s }}</span>{% endfor %}</p>
-    <p><strong>Budget range:</strong> ${{ marketer.price_min }} – ${{ marketer.price_max }} ({{ marketer.price_model or '' }})</p>
+    <p><strong>Budget range:</strong> {{ marketer | marketer_price }}{% if marketer.price_model %} ({{ marketer.price_model }}){% endif %}</p>
     <p><strong>Geography:</strong> {{ marketer.geography or 'N/A' }}</p>
     <p><strong>Languages:</strong> {{ marketer.languages | join(", ") }}</p>
+    <p><strong>Proof strength:</strong> {{ marketer.proof_strength or 0 }}% · <strong>Confidence:</strong> {{ marketer.confidence_score or 0 }}%</p>
 </div>
-<a href="/search/browse">← Browse</a>
+<div class="card">
+    <h2>Request an intro</h2>
+    <form method="POST">
+        <p><label>Your name<br><input name="artist_name" required style="width:100%;"></label></p>
+        <p><label>Email<br><input name="email" type="email" required style="width:100%;"></label></p>
+        <p><label>Message<br><textarea name="message" rows="3" style="width:100%;"></textarea></label></p>
+        <button class="btn btn-primary" type="submit">Send intro request</button>
+    </form>
+</div>
+{% if marketer.affiliate_url or marketer.website %}
+<p><a href="/search/marketer/{{ marketer.id }}/go" class="btn btn-secondary" rel="noopener">Visit services site</a></p>
+{% endif %}
+<a href="/search/browse?view=all">← Browse</a>
 {% endblock %}

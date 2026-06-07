@@ -14,6 +14,13 @@ from app.constants.marketer_taxonomy import (
     infer_services_from_text,
 )
 from app.models import Marketer
+from app.services.marketer_display import (
+    estimate_pricing_from_services,
+    extract_pricing_from_text,
+    infer_preferred_maturity,
+    normalize_brand_name,
+)
+from app.services.profile_classifier import classify_profile
 
 
 def run_discovery_cycle(max_candidates=None):
@@ -26,10 +33,20 @@ def run_discovery_cycle(max_candidates=None):
     created = 0
     skipped_existing = 0
     skipped_low_confidence = 0
+    skipped_not_profile = 0
 
     for candidate in candidates:
         website = _normalize_website(candidate["url"].strip())
         if not website:
+            continue
+
+        prelim_ok, prelim_reason = classify_profile(
+            website,
+            title=candidate.get("title", ""),
+            snippet=candidate.get("snippet", ""),
+        )
+        if not prelim_ok:
+            skipped_not_profile += 1
             continue
 
         existing = _find_existing_by_website(website)
@@ -41,10 +58,18 @@ def run_discovery_cycle(max_candidates=None):
                 existing.proof_strength = enriched["proof_strength"]
                 existing.confidence_score = enriched["confidence_score"]
                 existing.source = enriched["source"]
+                existing.name = enriched["name"]
+                existing.brand_name = enriched["brand_name"]
+                existing.price_min = enriched.get("price_min")
+                existing.price_max = enriched.get("price_max")
+                existing.price_model = enriched.get("price_model")
             skipped_existing += 1
             continue
 
         enriched = _enrich_candidate(candidate)
+        if not enriched.get("is_service_profile"):
+            skipped_not_profile += 1
+            continue
         if enriched["confidence_score"] < int(os.environ.get("DISCOVERY_MIN_CONFIDENCE", "30")):
             skipped_low_confidence += 1
             continue
@@ -59,6 +84,12 @@ def run_discovery_cycle(max_candidates=None):
             services=enriched["services"],
             languages=enriched["languages"],
             geography=enriched["geography"],
+            price_min=enriched.get("price_min"),
+            price_max=enriched.get("price_max"),
+            price_model=enriched.get("price_model"),
+            price_verified=enriched.get("price_verified", False),
+            preferred_maturity=enriched.get("preferred_maturity", []),
+            affiliate_url=enriched.get("affiliate_url"),
             portfolio_urls=enriched["portfolio_urls"],
             evidence_summary=enriched["evidence_summary"],
             proof_strength=enriched["proof_strength"],
@@ -74,6 +105,7 @@ def run_discovery_cycle(max_candidates=None):
         "created": created,
         "skipped_existing": skipped_existing,
         "skipped_low_confidence": skipped_low_confidence,
+        "skipped_not_profile": skipped_not_profile,
         "considered": len(candidates),
         "query_plan": query_plan,
         "underrepresented": underrepresented,
@@ -83,11 +115,11 @@ def run_discovery_cycle(max_candidates=None):
 def build_query_plan(underrepresented):
     """Create discovery queries and bias toward underrepresented taxonomy targets."""
     base_queries = [
-        "music marketing agency",
-        "music marketing freelancer",
-        "playlist pitching service for artists",
-        "music PR agency independent artists",
-        "tiktok ads music marketing",
+        "music marketing agency contact pricing",
+        "music promotion company for independent artists",
+        "playlist pitching agency hire",
+        "music PR firm services",
+        "independent artist marketing agency -reddit -youtube -blog -tutorial",
     ]
     for service in underrepresented["services"]:
         base_queries.append(f"{service.replace('_', ' ')} music marketing")
@@ -112,6 +144,13 @@ def _gather_candidates(limit=25, queries=None):
             url = (item.get("url") or "").strip()
             if not _looks_like_web_url(url) or url in seen_urls:
                 continue
+            ok, _ = classify_profile(
+                url,
+                title=item.get("title", ""),
+                snippet=item.get("snippet", ""),
+            )
+            if not ok:
+                continue
             seen_urls.add(url)
             all_candidates.append(item)
             if len(all_candidates) >= limit:
@@ -123,8 +162,27 @@ def _enrich_candidate(candidate):
     website = candidate["url"]
     title = candidate.get("title", "").strip()
     snippet = candidate.get("snippet", "").strip()
-    text = _fetch_text(website)
+    text = _fetch_site_corpus(website)
     corpus = f"{title}\n{snippet}\n{text}".lower()
+
+    is_service, reject_reason = classify_profile(website, title=title, snippet=snippet, text=text)
+    if not is_service:
+        return {
+            "name": title[:255] or "Unknown",
+            "brand_name": title[:255] or "Unknown",
+            "email": None,
+            "bio": snippet[:800],
+            "genres": [],
+            "services": [],
+            "languages": ["en"],
+            "geography": None,
+            "portfolio_urls": [website],
+            "evidence_summary": f"Rejected: {reject_reason}",
+            "proof_strength": 0,
+            "confidence_score": 0,
+            "source": candidate.get("source", "agent"),
+            "is_service_profile": False,
+        }
 
     llm = _extract_with_llm(title=title, snippet=snippet, text=text, url=website)
     services = llm.get("services") or infer_services_from_text(corpus)
@@ -144,11 +202,27 @@ def _enrich_candidate(candidate):
     )
 
     domain = urlparse(website).netloc or "unknown"
-    brand_name = llm.get("brand_name") or (title.split("|")[0].split("-")[0].strip() if title else domain)
-    name = llm.get("name") or brand_name
+    raw_brand = llm.get("brand_name") or (title.split("|")[0].split("-")[0].strip() if title else domain)
+    raw_name = llm.get("name") or raw_brand
+    brand_name = normalize_brand_name(
+        website=website,
+        title=title,
+        brand_name=raw_brand,
+        name=raw_name,
+    )
+    name = brand_name
+    price_min, price_max, price_model = extract_pricing_from_text(text)
+    price_verified = price_min is not None
+    if price_min is None:
+        price_min, price_max, price_model = estimate_pricing_from_services(services)
+        price_verified = False
+    preferred_maturity = infer_preferred_maturity(text)
+    if review_count > 0 or rating >= 4.0:
+        proof = min(100, proof + 10)
     evidence = (
-        f"Source={candidate.get('source', 'agent')}; rating={rating:.1f}; "
-        f"reviews={review_count}; inferred_services={services}; inferred_genres={genres}"
+        f"Source={candidate.get('source', 'agent')}; profile=service; rating={rating:.1f}; "
+        f"reviews={review_count}; inferred_services={services}; inferred_genres={genres}; "
+        f"preferred_maturity={preferred_maturity}; price_verified={price_verified}"
     )
 
     return {
@@ -160,12 +234,113 @@ def _enrich_candidate(candidate):
         "services": services,
         "languages": ["en"],
         "geography": None,
+        "price_min": price_min,
+        "price_max": price_max,
+        "price_model": price_model,
+        "price_verified": price_verified,
+        "preferred_maturity": preferred_maturity,
+        "affiliate_url": website,
         "portfolio_urls": [website],
         "evidence_summary": evidence[:1500],
         "proof_strength": proof,
         "confidence_score": confidence,
         "source": candidate.get("source", "agent"),
+        "is_service_profile": True,
     }
+
+
+def cleanup_marketer_catalog():
+    """Remove demo data and non-service profiles from the marketer catalog."""
+    removed_demo = 0
+    removed_non_profile = 0
+    removed_duplicates = 0
+    kept = 0
+
+    marketers = Marketer.query.all()
+    for marketer in marketers:
+        if marketer.source == "manual":
+            db.session.delete(marketer)
+            removed_demo += 1
+            continue
+
+        text = _fetch_text(marketer.website or "")
+        ok, reason = classify_profile(
+            marketer.website or "",
+            title=marketer.name or "",
+            snippet=marketer.bio or "",
+            text=text,
+        )
+        if not ok:
+            db.session.delete(marketer)
+            removed_non_profile += 1
+        else:
+            normalized = _normalize_website(marketer.website or "")
+            if normalized:
+                marketer.website = normalized
+            if marketer.source == "search_api" and (marketer.confidence_score or 0) >= 30:
+                marketer.status = "approved"
+
+    db.session.flush()
+
+    seen = {}
+    for marketer in Marketer.query.all():
+        key = _normalize_website(marketer.website or "")
+        if not key:
+            continue
+        if key in seen:
+            db.session.delete(marketer)
+            removed_duplicates += 1
+        else:
+            seen[key] = marketer.id
+            kept += 1
+
+    db.session.commit()
+    return {
+        "removed_demo": removed_demo,
+        "removed_non_profile": removed_non_profile,
+        "removed_duplicates": removed_duplicates,
+        "kept": kept,
+    }
+
+
+def backfill_marketer_card_fields():
+    """Normalize brand labels and pricing for all marketers."""
+    updated = 0
+    for marketer in Marketer.query.all():
+        text = _fetch_text(marketer.website or "")
+        brand = normalize_brand_name(
+            website=marketer.website or "",
+            title=marketer.name or "",
+            brand_name=marketer.brand_name or "",
+            name=marketer.name or "",
+        )
+        changed = False
+        if marketer.brand_name != brand or marketer.name != brand:
+            marketer.brand_name = brand
+            marketer.name = brand
+            changed = True
+        price_min, price_max, price_model = extract_pricing_from_text(text)
+        if price_min is None:
+            price_min, price_max, price_model = estimate_pricing_from_services(marketer.services)
+        if price_min is not None and (
+            marketer.price_min != price_min
+            or marketer.price_max != price_max
+            or marketer.price_model != price_model
+        ):
+            marketer.price_min = price_min
+            marketer.price_max = price_max
+            marketer.price_model = price_model
+            changed = True
+        if changed:
+            updated += 1
+        if not marketer.preferred_maturity:
+            marketer.preferred_maturity = infer_preferred_maturity(text)
+            changed = True
+        if not marketer.affiliate_url and marketer.website:
+            marketer.affiliate_url = marketer.website
+            changed = True
+    db.session.commit()
+    return {"updated": updated}
 
 
 def _underrepresented_targets():
@@ -185,6 +360,38 @@ def _underrepresented_targets():
     low_services = sorted(service_counts, key=lambda key: service_counts[key])[:3]
     low_genres = sorted(genre_counts, key=lambda key: genre_counts[key])[:3]
     return {"services": low_services, "genres": low_genres}
+
+
+def get_discovery_report():
+    """Return coverage counts and underrepresented taxonomy targets."""
+    service_counts = {name: 0 for name in CANONICAL_SERVICES}
+    genre_counts = {name: 0 for name in CANONICAL_GENRES}
+    marketers = Marketer.query.filter(Marketer.status.in_(("approved", "pending"))).all()
+    for marketer in marketers:
+        for service in marketer.services or []:
+            if service in service_counts:
+                service_counts[service] += 1
+        for genre in marketer.genres or []:
+            if genre in genre_counts:
+                genre_counts[genre] += 1
+    under = _underrepresented_targets()
+    return {
+        "total": len(marketers),
+        "approved": Marketer.query.filter_by(status="approved").count(),
+        "pending": Marketer.query.filter_by(status="pending").count(),
+        "service_counts": service_counts,
+        "genre_counts": genre_counts,
+        "underrepresented": under,
+    }
+
+
+def _fetch_site_corpus(base_url):
+    chunks = [_fetch_text(base_url)]
+    parsed = urlparse(base_url)
+    root = f"{parsed.scheme}://{parsed.netloc}"
+    for suffix in ("/pricing", "/services", "/packages"):
+        chunks.append(_fetch_text(root + suffix))
+    return "\n".join(chunks)[:40000]
 
 
 def _fetch_text(url):
@@ -221,7 +428,9 @@ def _normalize_website(url):
         return ""
     if not _looks_like_web_url(url):
         return ""
-    return url.rstrip("/")
+    parsed = urlparse(url)
+    normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path.rstrip('/')}"
+    return normalized
 
 
 def _find_existing_by_website(website):

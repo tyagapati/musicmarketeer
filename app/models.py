@@ -1,5 +1,7 @@
 """SQLAlchemy models."""
 import json
+from datetime import datetime
+
 from app import db
 
 
@@ -37,6 +39,8 @@ class Marketer(db.Model):
     price_min = db.Column(db.Integer)
     price_max = db.Column(db.Integer)
     price_model = db.Column(db.String(50))
+    price_verified = db.Column(db.Boolean, default=False)
+    affiliate_url = db.Column(db.String(500))
     preferred_maturity = db.Column(JsonList, default=list)
     portfolio_urls = db.Column(JsonList, default=list)
     evidence_summary = db.Column(db.Text)
@@ -80,3 +84,37 @@ class CampaignBrief(db.Model):
             self.maturity_tier = "mid"
         else:
             self.maturity_tier = "advanced"
+
+
+class IntroRequest(db.Model):
+    __tablename__ = "intro_requests"
+    id = db.Column(db.Integer, primary_key=True)
+    marketer_id = db.Column(db.Integer, db.ForeignKey("marketers.id"), nullable=False)
+    artist_name = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(255), nullable=False)
+    message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class MarketerApplication(db.Model):
+    __tablename__ = "marketer_applications"
+    id = db.Column(db.Integer, primary_key=True)
+    brand_name = db.Column(db.String(255), nullable=False)
+    website = db.Column(db.String(500), nullable=False)
+    email = db.Column(db.String(255))
+    services = db.Column(JsonList, default=list)
+    genres = db.Column(JsonList, default=list)
+    bio = db.Column(db.Text)
+    status = db.Column(db.String(50), default="pending")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class MatchFeedback(db.Model):
+    __tablename__ = "match_feedback"
+    id = db.Column(db.Integer, primary_key=True)
+    brief_id = db.Column(db.Integer, db.ForeignKey("campaign_briefs.id"), nullable=False)
+    marketer_id = db.Column(db.Integer, db.ForeignKey("marketers.id"), nullable=False)
+    hired = db.Column(db.Boolean, default=False)
+    rating = db.Column(db.Integer)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Intro requests – Admin{% endblock %}
+{% block content %}
+<h1>Intro requests</h1>
+{% for row in intros %}
+<div class="card" style="margin-bottom:0.75rem;">
+    <strong>{{ row.artist_name }}</strong> → marketer #{{ row.marketer_id }}
+    <br>{{ row.email }}
+    <br><span style="font-size:0.85rem;">{{ row.message or 'No message' }}</span>
+</div>
+{% else %}
+<div class="card"><p>No intro requests yet.</p></div>
+{% endfor %}
+<p><a href="/admin/">← Dashboard</a></p>
+{% endblock %}
