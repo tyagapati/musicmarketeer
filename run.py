@@ -3,7 +3,7 @@ Application entry point.
 """
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 from app import create_app
 

@@ -338,6 +338,16 @@
     color: #eef4ff;
     line-height: 1.28;
   }
+  .browse-provider-badge{
+    display:inline-block;
+    font-size:.68rem;
+    border-radius:999px;
+    padding:.12rem .4rem;
+    margin-top:.15rem;
+    border:1px solid rgba(255,255,255,.14);
+    color:#dbe6ff;
+  }
+  .browse-provider-badge--solo{ border-color: rgba(52,211,153,.35); color:#bbf7d0; }
   .browse-spot-meta span{
     display: block;
     margin-top: 0.22rem;
@@ -601,13 +611,13 @@
   <section class="browse-intro-full" aria-label="Browse marketers intro">
     <div class="browse-intro-top">
       <div class="browse-intro-copy">
-        <h1>Browse our endless catalogue of vetted marketers</h1>
+        <h1>Browse platform marketers on SoundMatch</h1>
         <p class="sub">Discover specialists by genre, service, and pricing. Every profile includes proof and confidence signals so you can compare options quickly.</p>
         <div class="browse-intro-cta">
           <a href="/search/browse?view=all" class="btn btn-primary">Check full list</a>
           <a href="/artist/intake" class="btn btn-secondary">Build my brief first</a>
         </div>
-        <div class="browse-intro-note">{{ marketers|length }} vetted marketers currently in the directory.</div>
+        <div class="browse-intro-note">{{ marketers|length }} enrolled marketers with bookable packages.</div>
       </div>
     </div>
 
@@ -638,6 +648,7 @@
                     <img class="browse-spot-avatar" src="https://i.pravatar.cc/96?img={{ (m.id % 70) + 1 }}" alt="Profile image for {{ m | marketer_brand }}" width="96" height="96" loading="lazy">
                     <div class="browse-spot-meta">
                       <b>{{ m | marketer_brand }}</b>
+                      <span class="browse-provider-badge{% if m.enrolled and m.provider_type == 'solo' %} browse-provider-badge--solo{% endif %}">{{ m | provider_badge }}</span>
                       <span>{{ m | marketer_price }}</span>
                     </div>
                   </a>
@@ -667,9 +678,14 @@
             } catch (e) {}
             if (reduced) root.classList.add('browse-carousel--no-motion');
 
+            function carouselOffsetPx() {
+              var vp = track.parentElement;
+              return vp ? i * vp.offsetWidth : 0;
+            }
+
             function go(to) {
               i = (to % n + n) % n;
-              track.style.transform = 'translateX(' + (-i * 100) + '%)';
+              track.style.transform = 'translate3d(-' + carouselOffsetPx() + 'px, 0, 0)';
               var dots = dotsHost.querySelectorAll('.browse-carousel-dot');
               for (var d = 0; d < dots.length; d++) {
                 dots[d].setAttribute('aria-current', d === i ? 'true' : 'false');
@@ -747,6 +763,10 @@
               else armTimer();
             });
 
+            window.addEventListener('resize', function () {
+              track.style.transform = 'translate3d(-' + carouselOffsetPx() + 'px, 0, 0)';
+            });
+
             go(0);
             armTimer();
           })();
@@ -812,6 +832,7 @@
           <img class="m-avatar" src="https://i.pravatar.cc/96?img={{ (m.id % 70) + 1 }}" alt="Sample profile for {{ m | marketer_brand }}" loading="lazy">
           <div>
             <h2 class="m-name"><a href="/search/marketer/{{ m.id }}">{{ m | marketer_brand }}</a></h2>
+            <span class="browse-provider-badge{% if m.enrolled and m.provider_type == 'solo' %} browse-provider-badge--solo{% endif %}">{{ m | provider_badge }}</span>
           </div>
         </div>
         <span class="m-price">{{ m | marketer_price }}</span>

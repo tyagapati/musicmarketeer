@@ -2,27 +2,48 @@
 {% block title %}{{ marketer | marketer_brand }} – SoundMatch{% endblock %}
 {% block content %}
 <h1>{{ marketer | marketer_brand }}</h1>
+<p><span class="badge approved">Platform marketer</span></p>
 <p>{{ marketer.bio or '' }}</p>
 <div class="card">
     <h2>Details</h2>
     <p><strong>Genres:</strong> {% for g in marketer.genres %}<span class="badge">{{ g }}</span>{% endfor %}</p>
     <p><strong>Services:</strong> {% for s in marketer.services %}<span class="badge">{{ s }}</span>{% endfor %}</p>
-    <p><strong>Budget range:</strong> {{ marketer | marketer_price }}{% if marketer.price_model %} ({{ marketer.price_model }}){% endif %}</p>
-    <p><strong>Geography:</strong> {{ marketer.geography or 'N/A' }}</p>
-    <p><strong>Languages:</strong> {{ marketer.languages | join(", ") }}</p>
-    <p><strong>Proof strength:</strong> {{ marketer.proof_strength or 0 }}% · <strong>Confidence:</strong> {{ marketer.confidence_score or 0 }}%</p>
+    <p><strong>Languages:</strong> {{ marketer.languages | join(", ") or "en" }}</p>
+    <p><strong>Proof strength:</strong> {{ marketer.proof_strength or 0 }}%</p>
 </div>
+
 <div class="card">
-    <h2>Request an intro</h2>
-    <form method="POST">
-        <p><label>Your name<br><input name="artist_name" required style="width:100%;"></label></p>
-        <p><label>Email<br><input name="email" type="email" required style="width:100%;"></label></p>
-        <p><label>Message<br><textarea name="message" rows="3" style="width:100%;"></textarea></label></p>
-        <button class="btn btn-primary" type="submit">Send intro request</button>
-    </form>
+    <h2>Book a package</h2>
+    {% if packages %}
+    {% for pkg in packages %}
+    <div style="border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:.85rem;margin-bottom:.65rem;">
+        <strong>{{ pkg.title }}</strong>
+        <span class="badge">{{ pkg.service | taxonomy_label }}</span>
+        <p style="margin:.4rem 0;font-size:.9rem;color:var(--muted);">{{ pkg.description or 'Delivered on SoundMatch.' }}</p>
+        <p style="margin:.35rem 0;">
+            <strong>{{ format_price_cents(pkg.price_cents) }}</strong>
+            · {{ pkg.delivery_days }} day delivery
+        </p>
+        {% if brief and can_book %}
+        <form method="POST" action="/search/match/{{ brief.id }}/book/{{ pkg.id }}" style="margin-top:.5rem;">
+            {% include '_csrf.html' %}
+            <button type="submit" class="btn btn-success btn-sm">Book now</button>
+        </form>
+        {% elif brief %}
+        <p style="font-size:.85rem;color:#f59e0b;margin-top:.5rem;">Payout setup in progress — booking opens when this marketer finishes Stripe Connect.</p>
+        {% else %}
+        <a href="/artist/intake" class="btn btn-secondary btn-sm">Start a brief to book</a>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:var(--muted);">This marketer is setting up packages. Check back soon.</p>
+    {% endif %}
 </div>
-{% if marketer.affiliate_url or marketer.website %}
-<p><a href="/search/marketer/{{ marketer.id }}/go" class="btn btn-secondary" rel="noopener">Visit services site</a></p>
+
+{% if brief %}
+<p><a href="/search/match/{{ brief.id }}">← Back to matches</a></p>
+{% else %}
+<a href="/search/browse?view=all">← Browse platform marketers</a>
 {% endif %}
-<a href="/search/browse?view=all">← Browse</a>
 {% endblock %}

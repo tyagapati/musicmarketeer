@@ -2,9 +2,26 @@
 {% block title %}Marketers – Admin – SoundMatch{% endblock %}
 {% block content %}
 <h1>Manage marketers</h1>
-<form method="POST" action="/admin/ingest" style="margin-bottom:1rem;">
-    <button class="btn btn-sm btn-success">Run discovery cycle</button>
-</form>
+<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+    <form method="POST" action="/admin/ingest" class="discovery-form">
+        {% include '_csrf.html' %}
+        <button type="submit" class="btn btn-sm btn-success discovery-submit">Run discovery cycle</button>
+    </form>
+    <form method="POST" action="/admin/catalog/verify-top-prices">
+        {% include '_csrf.html' %}
+        <button class="btn btn-sm btn-secondary">Verify top 10 prices</button>
+    </form>
+    {% if auto_approve_enabled %}
+    <form method="POST" action="/admin/catalog/auto-approve">
+        {% include '_csrf.html' %}
+        <button class="btn btn-sm btn-secondary">Auto-approve high confidence</button>
+    </form>
+    {% else %}
+    <span style="font-size:0.85rem;color:#6b7280;align-self:center;">
+        Batch auto-approve disabled — turn on under Admin → Automation
+    </span>
+    {% endif %}
+</div>
 {% if result.queued %}
 <div class="card" style="margin-bottom:1rem;">
     <strong>Discovery queued.</strong> Check back after worker processing.
@@ -16,7 +33,13 @@
     created={{ result.created }},
     skipped_existing={{ result.skipped_existing }},
     skipped_low_confidence={{ result.skipped_low_confidence }},
-    skipped_not_profile={{ result.skipped_not_profile }}
+    skipped_not_profile={{ result.skipped_not_profile }},
+    skipped_blacklisted={{ result.skipped_blacklisted or 0 }}
+    {% if result.created == 0 and result.considered > 0 %}
+    <br><span style="font-size:0.85rem;color:#6b7280;">No new marketers were added — fresh URLs were vetted but did not pass thresholds.</span>
+    {% elif result.considered == 0 %}
+    <br><span style="font-size:0.85rem;color:#6b7280;">No new URLs this cycle. Known catalog domains are excluded; queries rotate each run to find new sites.</span>
+    {% endif %}
 </div>
 {% endif %}
 {% for m in marketers %}
@@ -24,30 +47,56 @@
     <div>
         <strong>{{ m | marketer_brand }}</strong>
         <span class="badge {{ m.status }}">{{ m.status }}</span>
+        <span class="badge{% if m.enrolled and m.provider_type == 'solo' %} approved{% endif %}" style="font-size:.75rem;">{{ m | provider_badge }}{% if m.enrolled %} · enrolled{% endif %}</span>
+        {% if m.enrolled and m.payouts_enabled %}<span class="badge approved" style="font-size:.7rem;">Connect OK</span>{% elif m.enrolled and m.stripe_connect_account_id %}<span class="badge pending" style="font-size:.7rem;">Connect pending</span>{% elif m.enrolled %}<span class="badge pending" style="font-size:.7rem;">No Connect</span>{% endif %}
         <span style="font-size:0.82rem;color:#9ca3af;margin-left:0.35rem;">{{ m | marketer_price }}</span>
         <br><span style="font-size:0.8rem;color:#6b7280;">genres: {{ m.genres | join(", ") or "n/a" }}</span>
         <br><span style="font-size:0.8rem;color:#6b7280;">services: {{ m.services | join(", ") or "n/a" }}</span>
-        <br><span style="font-size:0.8rem;color:#6b7280;">source: {{ m.source or "unknown" }} | proof: {{ m.proof_strength or 0 }} | confidence: {{ m.confidence_score or 0 }} | price: {% if m.price_verified %}verified{% else %}estimated{% endif %}</span>
+        <br><span style="font-size:0.8rem;color:#6b7280;">source: {{ m.source or "unknown" }} | proof: {{ m.proof_strength or 0 }} | confidence: {{ m.confidence_score or 0 }} | price: {{ m.price_source or "estimated" }}{% if m.price_verified %} (verified){% endif %}</span>
+        {% if m.status == 'approved' and m.portal_token %}
+        <br><span style="font-size:0.78rem;color:#6b7280;">Portal: /marketer/portal/{{ m.portal_token }}</span>
+        {% endif %}
         {% if m.website %}
         <br><a href="{{ m.website }}" target="_blank" rel="noopener noreferrer" style="font-size:0.82rem;">Visit original site ↗</a>
         {% endif %}
         {% if m.evidence_summary %}
         <br><span style="font-size:0.75rem;color:#6b7280;">{{ m.evidence_summary[:180] }}{% if m.evidence_summary|length > 180 %}...{% endif %}</span>
         {% endif %}
+        {% set vd = latest_decisions.get(m.id) %}
+        {% if vd %}
+        <br><span style="font-size:0.75rem;color:#9ca3af;">Agent: {{ vd.decision }}{% if vd.risk_flags %} | risk: {{ vd.risk_flags | join(", ") }}{% endif %}</span>
+        {% if vd.reason_codes %}
+        <br><span style="font-size:0.72rem;color:#6b7280;">Reasons: {{ vd.reason_codes | join(", ") }}</span>
+        {% endif %}
+        {% if vd.would_auto_approve and not auto_approve_enabled %}
+        <br><span style="font-size:0.72rem;color:#22c55e;">Would auto-approve if automation toggle is on</span>
+        {% elif vd.risk_flags and m.status == 'pending' %}
+        <br><span style="font-size:0.72rem;color:#f59e0b;">Needs manual review (risk flags present)</span>
+        {% endif %}
+        {% endif %}
     </div>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        {% if m.status == 'approved' %}
+        <form method="POST" action="/admin/marketers/{{ m.id }}/enroll">
+            {% include '_csrf.html' %}
+            <button class="btn btn-sm btn-secondary">{% if m.enrolled %}Unenroll solo{% else %}Mark enrolled solo{% endif %}</button>
+        </form>
+        {% endif %}
         {% if not m.price_verified %}
         <form method="POST" action="/admin/marketers/{{ m.id }}/verify-price">
+            {% include '_csrf.html' %}
             <button class="btn btn-sm btn-secondary">Verify price</button>
         </form>
         {% endif %}
         {% if m.status != 'approved' %}
         <form method="POST" action="/admin/marketers/{{ m.id }}/approve">
+            {% include '_csrf.html' %}
             <button class="btn btn-sm btn-success">Approve</button>
         </form>
         {% endif %}
         {% if m.status != 'rejected' %}
         <form method="POST" action="/admin/marketers/{{ m.id }}/reject">
+            {% include '_csrf.html' %}
             <button class="btn btn-sm btn-danger">Reject</button>
         </form>
         {% endif %}
@@ -57,4 +106,15 @@
 <div class="card"><p>No marketers yet.</p></div>
 {% endfor %}
 <p style="margin-top:1rem;"><a href="/admin/">← Dashboard</a></p>
+<script>
+document.querySelectorAll(".discovery-form").forEach(function (form) {
+  form.addEventListener("submit", function () {
+    var btn = form.querySelector(".discovery-submit");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Running discovery…";
+    }
+  });
+});
+</script>
 {% endblock %}

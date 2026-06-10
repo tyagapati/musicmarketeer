@@ -4,6 +4,8 @@ import re
 
 import requests
 
+from app.services.site_urls import domain_key
+
 
 def _split_env_list(name):
     raw = os.environ.get(name, "")
@@ -20,12 +22,31 @@ class SearchApiConnector:
         self.language = os.environ.get("DISCOVERY_SEARCH_LANGUAGE", "en")
         self.max_results = int(os.environ.get("DISCOVERY_SEARCH_RESULTS_PER_QUERY", "5"))
 
-    def discover(self, queries):
+    def discover(
+        self,
+        queries,
+        *,
+        known_domains=None,
+        max_queries=None,
+        page_offset=0,
+    ):
+        """
+        Run up to max_queries SerpAPI searches, skipping known catalog domains.
+
+        Yields candidates one query at a time so the pipeline can stop early.
+        """
         if not self.api_key:
             return []
 
+        known_domains = known_domains or set()
+        max_queries = max_queries if max_queries is not None else len(queries)
         out = []
+        self.queries_run = 0
+
         for query in queries:
+            if self.queries_run >= max_queries:
+                break
+            self.queries_run += 1
             params = {
                 "engine": self.engine,
                 "q": query,
@@ -34,6 +55,8 @@ class SearchApiConnector:
                 "hl": self.language,
                 "num": self.max_results,
             }
+            if page_offset and self.engine == "google":
+                params["start"] = page_offset
             try:
                 response = requests.get(
                     "https://serpapi.com/search.json",
@@ -48,6 +71,9 @@ class SearchApiConnector:
             for item in data.get("organic_results", []):
                 link = (item.get("link") or "").strip()
                 if not link:
+                    continue
+                key = domain_key(link)
+                if key and key in known_domains:
                     continue
                 out.append(
                     {
@@ -67,26 +93,32 @@ class RedditConnector:
         self.client_secret = os.environ.get("REDDIT_CLIENT_SECRET", "")
         self.user_agent = os.environ.get("REDDIT_USER_AGENT", "soundmatch/1.0")
 
-    def discover(self, queries):
+    def discover(self, queries, *, known_domains=None):
+        known_domains = known_domains or set()
         discovered = []
-        discovered.extend(self._discover_from_env())
-        discovered.extend(self._discover_from_praw(queries))
+        discovered.extend(self._discover_from_env(known_domains))
+        discovered.extend(self._discover_from_praw(queries, known_domains))
         return discovered
 
-    def _discover_from_env(self):
+    def _discover_from_env(self, known_domains):
         urls = _split_env_list("REDDIT_DISCOVERY_URLS")
-        return [
-            {
-                "url": url,
-                "title": "Reddit discovery candidate",
-                "snippet": "Seeded from REDDIT_DISCOVERY_URLS",
-                "source": "reddit_seed",
-                "query": "seed",
-            }
-            for url in urls
-        ]
+        out = []
+        for url in urls:
+            key = domain_key(url)
+            if key and key in known_domains:
+                continue
+            out.append(
+                {
+                    "url": url,
+                    "title": "Reddit discovery candidate",
+                    "snippet": "Seeded from REDDIT_DISCOVERY_URLS",
+                    "source": "reddit_seed",
+                    "query": "seed",
+                }
+            )
+        return out
 
-    def _discover_from_praw(self, queries):
+    def _discover_from_praw(self, queries, known_domains):
         if not (self.client_id and self.client_secret):
             return []
         try:
@@ -114,6 +146,9 @@ class RedditConnector:
                     urls.append(post.url)
                 urls.extend(re.findall(r"https?://[^\s)]+", (getattr(post, "selftext", "") or "")))
                 for url in urls:
+                    key = domain_key(url)
+                    if key and key in known_domains:
+                        continue
                     found.append(
                         {
                             "url": url,
@@ -127,15 +162,21 @@ class RedditConnector:
 
 
 class WebDirectoryConnector:
-    def discover(self):
+    def discover(self, *, known_domains=None):
+        known_domains = known_domains or set()
         urls = _split_env_list("DISCOVERY_SEED_URLS")
-        return [
-            {
-                "url": url,
-                "title": "Directory discovery candidate",
-                "snippet": "Seeded from DISCOVERY_SEED_URLS",
-                "source": "directory_seed",
-                "query": "seed",
-            }
-            for url in urls
-        ]
+        out = []
+        for url in urls:
+            key = domain_key(url)
+            if key and key in known_domains:
+                continue
+            out.append(
+                {
+                    "url": url,
+                    "title": "Directory discovery candidate",
+                    "snippet": "Seeded from DISCOVERY_SEED_URLS",
+                    "source": "directory_seed",
+                    "query": "seed",
+                }
+            )
+        return out

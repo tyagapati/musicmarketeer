@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order.id }} – SoundMatch{% endblock %}
+{% block content %}
+<h1>Booking #{{ order.id }}</h1>
+<p><span class="badge {% if order.status == 'completed' %}approved{% elif order.status == 'delivered' %}pending{% elif order.status in ('paid', 'in_progress') %}pending{% endif %}">{{ order.status }}</span></p>
+
+<div class="card">
+    <h2>{{ package.title if package else 'Package' }}</h2>
+    <p><strong>Marketer:</strong> {{ marketer | marketer_brand }}</p>
+    <p><strong>Artist:</strong> {{ order.artist_name }} ({{ order.artist_email }})</p>
+    <p><strong>Total paid:</strong> {{ format_price_cents(order.amount_cents) }}</p>
+    {% if package %}
+    <p><strong>Delivery:</strong> {{ package.delivery_days }} days</p>
+    <p style="font-size:.9rem;color:var(--muted);">{{ package.description or '' }}</p>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-top:1rem;">
+    <h2 style="margin-top:0;font-size:1rem;">Status</h2>
+    <ol style="margin:0;padding-left:1.2rem;color:var(--muted);font-size:.9rem;line-height:1.8;">
+        <li{% if order.status != 'pending_payment' %} style="color:#6ee7b7;"{% endif %}>Payment confirmed</li>
+        <li{% if order.status in ('in_progress', 'delivered', 'completed') %} style="color:#6ee7b7;"{% endif %}>Marketer working</li>
+        <li{% if order.status in ('delivered', 'completed') %} style="color:#6ee7b7;"{% endif %}>Delivered</li>
+        <li{% if order.status == 'completed' %} style="color:#6ee7b7;"{% endif %}>Complete</li>
+    </ol>
+</div>
+
+{% if order.status == 'delivered' %}
+<div class="card" style="margin-top:1rem;">
+    <h2>Confirm completion</h2>
+    <p style="font-size:.9rem;color:var(--muted);">When you're happy with the work, confirm and optionally leave a rating.</p>
+    <form method="POST" action="/search/orders/{{ order.id }}/complete">
+        {% include '_csrf.html' %}
+        <p><label>Rating (1–5)<br><input type="number" name="rating" min="1" max="5" style="width:80px;"></label></p>
+        <p><label>Notes<br><textarea name="review_notes" rows="2" style="width:100%;"></textarea></label></p>
+        <button type="submit" class="btn btn-success btn-sm">Mark complete</button>
+    </form>
+</div>
+{% elif order.status == 'completed' %}
+<p style="color:#6ee7b7;margin-top:1rem;">This booking is complete. Thanks for using SoundMatch.</p>
+{% if order.rating %}<p style="font-size:.9rem;color:var(--muted);">Your rating: {{ order.rating }}/5</p>{% endif %}
+{% elif order.status == 'pending_payment' %}
+<p style="color:var(--muted);margin-top:1rem;">Payment pending. Complete checkout to confirm your booking.</p>
+{% else %}
+<p style="color:var(--muted);margin-top:1rem;">Your marketer is working on this order. You'll be notified when it's delivered.</p>
+{% endif %}
+
+{% if order.brief_id %}
+<p style="margin-top:1rem;"><a href="/search/match/{{ order.brief_id }}">← Back to matches</a></p>
+{% endif %}
+{% endblock %}

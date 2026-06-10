@@ -2,11 +2,27 @@
 {% block title %}Intro requests – Admin{% endblock %}
 {% block content %}
 <h1>Intro requests</h1>
+<p style="color:#6b7280;font-size:.9rem;margin-bottom:1rem;">
+  Concierge intros require SoundMatch to send the warm email, then mark status here.
+</p>
 {% for row in intros %}
 <div class="card" style="margin-bottom:0.75rem;">
-    <strong>{{ row.artist_name }}</strong> → marketer #{{ row.marketer_id }}
-    <br>{{ row.email }}
+    <strong>{{ row.artist_name }}</strong> → {{ marketer_names.get(row.marketer_id, ('marketer #' ~ row.marketer_id)) }}
+    <span class="badge {% if row.intro_type == 'concierge' %}pending{% else %}approved{% endif %}">{{ row.intro_type }}</span>
+    <span class="badge">{{ row.status }}</span>
+    {% if row.brief_id %}
+    <span style="font-size:.8rem;color:#6b7280;">brief #{{ row.brief_id }}</span>
+    <a href="/search/match/{{ row.brief_id }}" style="font-size:.8rem;margin-left:.35rem;">View match</a>
+    {% endif %}
+    <br><span style="font-size:.85rem;">Artist email: {{ row.email }}</span>
     <br><span style="font-size:0.85rem;">{{ row.message or 'No message' }}</span>
+    <form method="POST" action="/admin/intros/{{ row.id }}/status" style="margin-top:.6rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+        {% include '_csrf.html' %}
+        <button class="btn btn-sm btn-secondary" name="status" value="pending" type="submit">Pending</button>
+        <button class="btn btn-sm btn-success" name="status" value="sent" type="submit">Sent</button>
+        <button class="btn btn-sm btn-secondary" name="status" value="replied" type="submit">Replied</button>
+        <button class="btn btn-sm btn-danger" name="status" value="closed" type="submit">Closed</button>
+    </form>
 </div>
 {% else %}
 <div class="card"><p>No intro requests yet.</p></div>

@@ -2,6 +2,30 @@
 {% block title %}Admin – SoundMatch{% endblock %}
 {% block content %}
 <h1>Admin dashboard</h1>
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2 style="margin-top:0;font-size:1.1rem;">Automation</h2>
+    <p style="color:#6b7280;font-size:0.9rem;margin-top:0;">
+        Background processes that permanently change the catalog. Off by default until vetting is trustworthy.
+    </p>
+    <form method="POST" action="{{ url_for('admin.update_automation') }}">
+        {% include '_csrf.html' %}
+        {% for toggle in automation_toggles %}
+        <label class="automation-toggle">
+            <input type="checkbox" name="{{ toggle.key }}" {% if toggle.enabled %}checked{% endif %}>
+            <span>
+                <strong>{{ toggle.label }}</strong>
+                {% if toggle.enabled %}
+                <span class="badge approved" style="margin-left:0.35rem;">On</span>
+                {% else %}
+                <span class="badge pending" style="margin-left:0.35rem;">Off</span>
+                {% endif %}
+                <br><span style="font-size:0.85rem;color:#6b7280;">{{ toggle.help }}</span>
+            </span>
+        </label>
+        {% endfor %}
+        <button type="submit" class="btn btn-sm btn-primary">Save automation settings</button>
+    </form>
+</div>
 <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem;">
     <div class="card" style="flex:1;min-width:140px;text-align:center;">
         <div class="score">{{ pending }}</div>
@@ -11,17 +35,64 @@
         <div class="score" style="color:#6ee7b7;">{{ approved }}</div>
         <p style="margin:0;">Approved</p>
     </div>
+    <div class="card" style="flex:1;min-width:140px;text-align:center;">
+        <div class="score" style="color:#6ee7b7;">{{ enrolled_platform }}</div>
+        <p style="margin:0;">Platform marketers</p>
+    </div>
+    <div class="card" style="flex:1;min-width:140px;text-align:center;">
+        <div class="score">{{ active_packages }}</div>
+        <p style="margin:0;">Active packages</p>
+    </div>
+    <div class="card" style="flex:1;min-width:140px;text-align:center;">
+        <div class="score">{{ pending_orders }}</div>
+        <p style="margin:0;">Orders in progress</p>
+    </div>
 </div>
+{% if gmv %}
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2 style="margin-top:0;font-size:1.05rem;">Marketplace revenue</h2>
+    <p style="margin:.35rem 0;">GMV: ${{ (gmv.gmv_cents / 100) | round(2) }} · Platform fees: ${{ (gmv.platform_fee_cents / 100) | round(2) }}</p>
+    <p style="margin:.35rem 0;font-size:.85rem;color:#6b7280;">{{ gmv.order_count }} paid orders · {{ gmv.completed_count }} completed</p>
+</div>
+{% endif %}
+{% if recent_orders %}
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2 style="margin-top:0;font-size:1.05rem;">Recent marketplace orders</h2>
+    {% for order in recent_orders %}
+    <p style="margin:.35rem 0;">
+        #{{ order.id }} · {{ order.artist_name }} · {{ order.status }} · ${{ (order.amount_cents / 100) | round(2) }}
+    </p>
+    {% endfor %}
+</div>
+{% endif %}
 <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
     <a href="/admin/marketers" class="btn btn-primary">Manage marketers →</a>
+    <a href="/admin/orders" class="btn btn-secondary">Marketplace orders</a>
     <a href="/admin/discovery-report" class="btn btn-secondary">Discovery report</a>
     <a href="/admin/applications" class="btn btn-secondary">Applications ({{ apps_pending }})</a>
-    <a href="/admin/intros" class="btn btn-secondary">Intro requests</a>
-    <form method="POST" action="/admin/ingest" style="margin:0;">
-        <button class="btn btn-sm btn-success">Run discovery cycle</button>
+    <a href="/admin/intros" class="btn btn-secondary">Legacy intros</a>
+    <form method="POST" action="/admin/ingest" style="margin:0;" class="discovery-form">
+        {% include '_csrf.html' %}
+        <button type="submit" class="btn btn-sm btn-success discovery-submit">Run discovery cycle</button>
+    </form>
+    <form method="POST" action="/admin/outcomes/refresh" style="margin:0;">
+        {% include '_csrf.html' %}
+        <button class="btn btn-sm btn-secondary">Refresh hire outcomes</button>
     </form>
     <form method="POST" action="/admin/logout" style="margin:0;">
+        {% include '_csrf.html' %}
         <button class="btn btn-sm btn-danger">Logout</button>
     </form>
 </div>
+<script>
+document.querySelectorAll(".discovery-form").forEach(function (form) {
+  form.addEventListener("submit", function () {
+    var btn = form.querySelector(".discovery-submit");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Running discovery…";
+    }
+  });
+});
+</script>
 {% endblock %}

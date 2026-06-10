@@ -27,12 +27,13 @@
     .page-intake .intake-canvas__photo{
         position: absolute;
         inset: 0;
-        background-image:
-            linear-gradient(180deg, rgba(6,9,20,.94) 0%, rgba(6,9,20,.88) 40%, rgba(6,9,20,.95) 100%),
-            var(--ob-bg-img, url("https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=2400&q=82"));
         background-size: cover;
         background-position: center 35%;
-        transition: background-image 0.6s ease, background-position 0.6s ease;
+        opacity: 0;
+        transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .page-intake .intake-canvas__photo.is-visible{
+        opacity: 1;
     }
     .page-intake .intake-canvas__wash{
         position: absolute;
@@ -122,24 +123,28 @@
         flex: 1;
         overflow: hidden;
         position: relative;
-        display: flex;
-        align-items: stretch;
+        width: 100%;
+        min-height: 320px;
     }
     .ob-track{
         display: flex;
-        width: 100%;
         height: 100%;
-        transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+        transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1);
         will-change: transform;
+    }
+    .ob-track.is-instant{
+        transition: none !important;
     }
     @media (prefers-reduced-motion: reduce){
         .ob-track{ transition-duration: 0.01ms !important; }
         .ob-progress-fill{ transition-duration: 0.01ms !important; }
+        .page-intake .intake-canvas__photo{ transition-duration: 0.01ms !important; }
+        .ob-slide-inner{ transition-duration: 0.01ms !important; }
     }
     .ob-slide{
         flex: 0 0 100%;
         width: 100%;
-        min-width: 0;
+        min-width: 100%;
         padding: 0.25rem 0 1rem;
         display: flex;
         flex-direction: column;
@@ -157,6 +162,19 @@
         display: flex;
         flex-direction: column;
         gap: 1.25rem;
+        opacity: 1;
+        transform: none;
+        transition:
+            opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.06s,
+            transform 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.06s;
+    }
+    .ob-slide:not(.is-active) .ob-slide-inner{
+        opacity: 0.4;
+        transform: translateY(10px);
+    }
+    .ob-slide.is-active .ob-slide-inner{
+        opacity: 1;
+        transform: translateY(0);
     }
     .ob-kicker{
         font-size: 0.75rem;
@@ -215,6 +233,30 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 0.85rem;
+    }
+    .ob-fields .taxonomy-grid{
+        margin-top: 0.35rem;
+    }
+    .ob-fields .ob-chk{
+        font-size: 0.95rem;
+        color: var(--text);
+        text-transform: none;
+        letter-spacing: normal;
+        font-weight: 500;
+        border-color: rgba(255,255,255,.10);
+        background: rgba(0,0,0,.22);
+    }
+    .ob-fields .ob-chk:has(input:checked){
+        border-color: rgba(34,211,238,.5);
+        background: rgba(34,211,238,.12);
+    }
+    .ob-label{
+        color: rgba(224,242,254,.5);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 650;
+        display: block;
     }
     @media (max-width: 520px){
         .ob-fields .grid2{ grid-template-columns: 1fr; }
@@ -342,7 +384,8 @@
 {% endblock %}
 {% block content %}
 <div class="intake-canvas" id="intake-canvas" aria-hidden="true" data-ob-canvas>
-    <div class="intake-canvas__photo" id="intake-canvas-photo"></div>
+    <div class="intake-canvas__photo is-visible" id="intake-canvas-photo-a"></div>
+    <div class="intake-canvas__photo" id="intake-canvas-photo-b"></div>
     <div class="intake-canvas__wash"></div>
     <div class="intake-canvas__grain"></div>
 </div>
@@ -366,7 +409,7 @@
         <div class="ob-viewport">
             <div class="ob-track" id="ob-track">
                 <!-- 0 welcome -->
-                <section class="ob-slide ob-slide--welcome" data-step="0" data-bg="https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
+                <section class="ob-slide ob-slide--welcome is-active" data-step="0" data-bg="https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
                     <div class="ob-slide-inner">
                         <span class="ob-kicker">SoundMatch</span>
                         <h2 class="ob-title">Let’s set up your campaign</h2>
@@ -394,11 +437,15 @@
                 <section class="ob-slide" data-step="2" data-bg="https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
                     <div class="ob-slide-inner">
                         <h2 class="ob-title">What genres define you?</h2>
-                        <p class="ob-sub">Comma-separated is fine—we use this for genre fit scoring.</p>
+                        <p class="ob-sub">Pick all that apply—we use this for genre fit scoring.</p>
                         <div class="ob-fields">
-                            <div>
-                                <label for="genres">Genres</label>
-                                <input type="text" id="genres" name="genres" required placeholder="e.g. indie, alt-R&amp;B, bedroom pop">
+                            <div class="taxonomy-grid">
+                                {% for genre in canonical_genres %}
+                                <label class="chk-option ob-chk">
+                                    <input type="checkbox" name="genres" value="{{ genre }}">
+                                    <span>{{ genre | taxonomy_label }}</span>
+                                </label>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -414,8 +461,15 @@
                                 <input type="text" id="goals" name="goals" placeholder="streams, playlist adds, followers…">
                             </div>
                             <div>
-                                <label for="services_needed">Services</label>
-                                <input type="text" id="services_needed" name="services_needed" placeholder="playlist pitching, content, ads…">
+                                <span class="ob-label">Services needed <span style="color:var(--bad);">*</span></span>
+                                <div class="taxonomy-grid">
+                                    {% for service in canonical_services %}
+                                    <label class="chk-option ob-chk">
+                                        <input type="checkbox" name="services_needed" value="{{ service }}">
+                                        <span>{{ service | taxonomy_label }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -432,7 +486,7 @@
                                     <input type="number" id="budget_min" name="budget_min" min="0" placeholder="0">
                                 </div>
                                 <div>
-                                    <label for="budget_max">Max ($)</label>
+                                    <label for="budget_max">Max ($) <span style="color:var(--bad);">*</span></label>
                                     <input type="number" id="budget_max" name="budget_max" min="0" placeholder="0">
                                 </div>
                             </div>
@@ -515,13 +569,17 @@
 (function () {
   var TOTAL = 9;
   var step = 0;
+  var transitioning = false;
+  var activeBgLayer = 0;
   var track = document.getElementById("ob-track");
+  var viewport = track ? track.parentElement : null;
   var fill = document.getElementById("ob-progress-fill");
   var label = document.getElementById("ob-step-label");
   var backBtn = document.getElementById("ob-back");
   var continueBtn = document.getElementById("ob-continue");
   var form = document.getElementById("intake-ob-form");
-  var photo = document.getElementById("intake-canvas-photo");
+  var photoA = document.getElementById("intake-canvas-photo-a");
+  var photoB = document.getElementById("intake-canvas-photo-b");
   var reviewEl = document.getElementById("ob-review");
 
   var stepTitles = [
@@ -536,37 +594,102 @@
     "Review"
   ];
 
+  var PLAIN_BG =
+    "linear-gradient(180deg, rgba(6,9,20,.98) 0%, rgba(8,12,24,.97) 42%, rgba(6,9,20,.99) 100%), " +
+    "radial-gradient(900px 520px at 50% 0%, rgba(34,211,238,.08), transparent 55%), " +
+    "radial-gradient(700px 440px at 100% 100%, rgba(167,139,250,.07), transparent 50%)";
+
   function slideEls() {
+    if (!track) return [];
     return track.querySelectorAll(".ob-slide");
   }
 
-  function setBgForStep(i) {
-    var slides = slideEls();
-    var el = slides[i];
-    if (!el || !photo) return;
-    if (el.hasAttribute("data-bg-plain")) {
-      photo.style.backgroundImage =
-        "linear-gradient(180deg, rgba(6,9,20,.98) 0%, rgba(8,12,24,.97) 42%, rgba(6,9,20,.99) 100%), " +
-        "radial-gradient(900px 520px at 50% 0%, rgba(34,211,238,.08), transparent 55%), " +
-        "radial-gradient(700px 440px at 100% 100%, rgba(167,139,250,.07), transparent 50%)";
-      return;
-    }
+  function bgStyleForSlide(el) {
+    if (!el) return PLAIN_BG;
+    if (el.hasAttribute("data-bg-plain")) return PLAIN_BG;
     var url = el.getAttribute("data-bg");
-    if (!url) return;
+    if (!url) return PLAIN_BG;
     var u = url.replace(/&amp;/g, "&");
-    photo.style.backgroundImage =
-      "linear-gradient(180deg, rgba(6,9,20,.94) 0%, rgba(6,9,20,.88) 40%, rgba(6,9,20,.95) 100%), url(\"" + u + "\")";
+    return "linear-gradient(180deg, rgba(6,9,20,.94) 0%, rgba(6,9,20,.88) 40%, rgba(6,9,20,.95) 100%), url(\"" + u + "\")";
   }
 
-  function render() {
-    track.style.transform = "translateX(-" + step * 100 + "%)";
+  function preloadBackgrounds() {
+    slideEls().forEach(function (el) {
+      var url = el.getAttribute("data-bg");
+      if (!url) return;
+      var img = new Image();
+      img.src = url.replace(/&amp;/g, "&");
+    });
+  }
+
+  function setBgForStep(i, instant) {
+    var slides = slideEls();
+    var el = slides[i];
+    if (!photoA || !photoB || !el) return;
+    var style = bgStyleForSlide(el);
+    if (instant && i === 0 && activeBgLayer === 0) {
+      photoA.style.backgroundImage = style;
+      photoA.classList.add("is-visible");
+      photoB.classList.remove("is-visible");
+      return;
+    }
+    var incoming = activeBgLayer === 0 ? photoB : photoA;
+    var outgoing = activeBgLayer === 0 ? photoA : photoB;
+    incoming.style.backgroundImage = style;
+    incoming.classList.add("is-visible");
+    outgoing.classList.remove("is-visible");
+    activeBgLayer = 1 - activeBgLayer;
+  }
+
+  function slideOffsetPx() {
+    if (!viewport) return 0;
+    return step * viewport.offsetWidth;
+  }
+
+  function updateTrackPosition(instant) {
+    if (!track) return;
+    if (instant) track.classList.add("is-instant");
+    track.style.transform = "translate3d(-" + slideOffsetPx() + "px, 0, 0)";
+    if (instant) {
+      requestAnimationFrame(function () {
+        track.classList.remove("is-instant");
+      });
+    }
+  }
+
+  function setNavState() {
     var pct = ((step + 1) / TOTAL) * 100;
     fill.style.width = pct + "%";
     label.textContent = "Step " + (step + 1) + " of " + TOTAL + " · " + stepTitles[step];
     backBtn.hidden = step === 0;
+    backBtn.disabled = transitioning || step === 0;
     continueBtn.textContent = step === TOTAL - 1 ? "Find my matches" : "Continue";
-    setBgForStep(step);
+    continueBtn.disabled = transitioning;
     if (step === TOTAL - 1) buildReview();
+  }
+
+  function setActiveSlide(instant) {
+    slideEls().forEach(function (slide, idx) {
+      slide.classList.toggle("is-active", idx === step);
+    });
+    setBgForStep(step, instant);
+    updateTrackPosition(instant);
+    setNavState();
+  }
+
+  function unlockAfterTransition() {
+    transitioning = false;
+    backBtn.disabled = step === 0;
+    continueBtn.disabled = false;
+  }
+
+  function render(instant) {
+    setActiveSlide(!!instant);
+    if (instant) return;
+    transitioning = true;
+    backBtn.disabled = true;
+    continueBtn.disabled = true;
+    window.setTimeout(unlockAfterTransition, 500);
   }
 
   function visibleInputs() {
@@ -584,7 +707,23 @@
         return false;
       }
     }
+    if (step === 2) {
+      var genreBoxes = form.querySelectorAll('input[name="genres"]:checked');
+      if (!genreBoxes.length) {
+        alert("Select at least one genre.");
+        return false;
+      }
+    }
     return true;
+  }
+
+  function checkedValues(name) {
+    var boxes = form.querySelectorAll('input[name="' + name + '"]:checked');
+    var values = [];
+    for (var i = 0; i < boxes.length; i++) {
+      values.push(boxes[i].value);
+    }
+    return values.length ? values.join(", ") : "—";
   }
 
   function buildReview() {
@@ -606,9 +745,9 @@
       "<dl>" +
       "<dt>Artist</dt><dd>" + escapeHtml(val("artist_name")) + "</dd>" +
       "<dt>Email</dt><dd>" + escapeHtml(val("email")) + "</dd>" +
-      "<dt>Genres</dt><dd>" + escapeHtml(val("genres")) + "</dd>" +
+      "<dt>Genres</dt><dd>" + escapeHtml(checkedValues("genres")) + "</dd>" +
       "<dt>Goals</dt><dd>" + escapeHtml(val("goals")) + "</dd>" +
-      "<dt>Services</dt><dd>" + escapeHtml(val("services_needed")) + "</dd>" +
+      "<dt>Services</dt><dd>" + escapeHtml(checkedValues("services_needed")) + "</dd>" +
       "<dt>Budget</dt><dd>" + escapeHtml(val("budget_min")) + " – " + escapeHtml(val("budget_max")) + "</dd>" +
       "<dt>Spotify / TikTok / IG / YT</dt><dd>" +
       escapeHtml(val("spotify_monthly_listeners")) + " / " +
@@ -631,20 +770,20 @@
   }
 
   continueBtn.addEventListener("click", function () {
+    if (transitioning) return;
     if (step < TOTAL - 1) {
       if (!validateStep()) return;
       step++;
-      render();
+      render(false);
       return;
     }
     form.requestSubmit();
   });
 
   backBtn.addEventListener("click", function () {
-    if (step > 0) {
-      step--;
-      render();
-    }
+    if (transitioning || step <= 0) return;
+    step--;
+    render(false);
   });
 
   form.addEventListener("submit", function (e) {
@@ -656,7 +795,7 @@
         for (var s = 0; s < slides.length; s++) {
           if (slides[s].contains(bad)) {
             step = s;
-            render();
+            render(true);
             break;
           }
         }
@@ -672,6 +811,7 @@
       var value = chip.getAttribute("data-value");
       if (value === null) value = "";
       var group = chip.closest(".ob-chips");
+      if (!group) return;
       group.querySelectorAll(".ob-chip").forEach(function (c) {
         c.classList.toggle("is-selected", c === chip);
       });
@@ -694,7 +834,14 @@
     }
   });
 
-  render();
+  window.addEventListener("resize", function () {
+    updateTrackPosition(true);
+  });
+
+  if (!track || !viewport) return;
+
+  preloadBackgrounds();
+  render(true);
 })();
 </script>
 {% endblock %}

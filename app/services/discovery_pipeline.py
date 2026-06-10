@@ -1,7 +1,7 @@
 """Discovery -> vetting -> categorization pipeline for marketers."""
 import os
 import re
-from urllib.parse import urlparse
+import secrets
 
 import requests
 
@@ -10,8 +10,6 @@ from app.connectors.base import RedditConnector, SearchApiConnector, WebDirector
 from app.constants.marketer_taxonomy import (
     CANONICAL_GENRES,
     CANONICAL_SERVICES,
-    infer_genres_from_text,
-    infer_services_from_text,
 )
 from app.models import Marketer
 from app.services.marketer_display import (
@@ -21,23 +19,54 @@ from app.services.marketer_display import (
     normalize_brand_name,
 )
 from app.services.profile_classifier import classify_profile
+from app.services.site_blacklist import is_blacklisted
+from app.services.site_urls import canonical_homepage_url, dedupe_marketers_by_domain, domain_key, sync_marketer_domain_fields
+from app.services.discovery_search import (
+    known_catalog_domains,
+    next_serp_page_offset,
+    select_queries_for_cycle,
+    serpapi_query_budget,
+)
+from app.services.verification_agent import log_verification_decision, verify_candidate
+from app.services.verification_decision import (
+    DecisionTier,
+    meets_auto_approve_threshold,
+    should_auto_approve_marketer,
+)
+
+__all__ = [
+    "meets_auto_approve_threshold",
+    "should_auto_approve_marketer",
+    "run_discovery_cycle",
+    "build_query_plan",
+    "cleanup_marketer_catalog",
+    "backfill_marketer_card_fields",
+    "get_discovery_report",
+]
 
 
 def run_discovery_cycle(max_candidates=None):
     """Discover candidates, score reliability, and store pending marketers."""
     limit = max_candidates or int(os.environ.get("DISCOVERY_MAX_CANDIDATES", "25"))
     underrepresented = _underrepresented_targets()
-    query_plan = build_query_plan(underrepresented)
-    candidates = _gather_candidates(limit=limit, queries=query_plan)
+    full_query_plan = build_query_plan(underrepresented)
+    query_plan = select_queries_for_cycle(full_query_plan)
+    gather_stats = {}
+    candidates = _gather_candidates(limit=limit, queries=query_plan, stats=gather_stats)
 
     created = 0
     skipped_existing = 0
     skipped_low_confidence = 0
     skipped_not_profile = 0
+    skipped_blacklisted = 0
 
     for candidate in candidates:
-        website = _normalize_website(candidate["url"].strip())
+        website = canonical_homepage_url(candidate["url"].strip())
         if not website:
+            continue
+
+        if is_blacklisted(website):
+            skipped_blacklisted += 1
             continue
 
         prelim_ok, prelim_reason = classify_profile(
@@ -47,33 +76,49 @@ def run_discovery_cycle(max_candidates=None):
         )
         if not prelim_ok:
             skipped_not_profile += 1
+            log_verification_decision(
+                {
+                    "decision": DecisionTier.REJECT.value,
+                    "reason_codes": [prelim_reason or "prelim_classify_failed"],
+                    "evidence_summary": f"Pre-filter rejected: {prelim_reason}",
+                    "proof_strength": 0,
+                    "confidence_score": 0,
+                    "risk_flags": [],
+                    "llm_valid": False,
+                },
+                url=website,
+            )
             continue
 
         existing = _find_existing_by_website(website)
         if existing:
-            # Refresh evidence for stale pending candidates.
             if existing.status == "pending":
-                enriched = _enrich_candidate(candidate)
-                existing.evidence_summary = enriched["evidence_summary"]
-                existing.proof_strength = enriched["proof_strength"]
-                existing.confidence_score = enriched["confidence_score"]
-                existing.source = enriched["source"]
-                existing.name = enriched["name"]
-                existing.brand_name = enriched["brand_name"]
-                existing.price_min = enriched.get("price_min")
-                existing.price_max = enriched.get("price_max")
-                existing.price_model = enriched.get("price_model")
+                enriched = verify_candidate({**candidate, "url": website})
+                _apply_enriched_to_marketer(existing, enriched, website)
+                log_verification_decision(enriched, marketer_id=existing.id, url=website)
+                if enriched.get("decision") == DecisionTier.AUTO_APPROVE.value:
+                    existing.status = "approved"
+                    if not existing.portal_token:
+                        existing.portal_token = secrets.token_urlsafe(24)
             skipped_existing += 1
             continue
 
-        enriched = _enrich_candidate(candidate)
+        enriched = verify_candidate({**candidate, "url": website})
+
         if not enriched.get("is_service_profile"):
+            log_verification_decision(enriched, url=website)
             skipped_not_profile += 1
             continue
         if enriched["confidence_score"] < int(os.environ.get("DISCOVERY_MIN_CONFIDENCE", "30")):
+            log_verification_decision(enriched, url=website)
             skipped_low_confidence += 1
             continue
 
+        status = (
+            "approved"
+            if enriched.get("decision") == DecisionTier.AUTO_APPROVE.value
+            else "pending"
+        )
         marketer = Marketer(
             name=enriched["name"],
             brand_name=enriched["brand_name"],
@@ -88,28 +133,56 @@ def run_discovery_cycle(max_candidates=None):
             price_max=enriched.get("price_max"),
             price_model=enriched.get("price_model"),
             price_verified=enriched.get("price_verified", False),
+            price_source=enriched.get("price_source", "estimated"),
             preferred_maturity=enriched.get("preferred_maturity", []),
             affiliate_url=enriched.get("affiliate_url"),
             portfolio_urls=enriched["portfolio_urls"],
             evidence_summary=enriched["evidence_summary"],
             proof_strength=enriched["proof_strength"],
             source=enriched["source"],
-            status="pending",
+            status=status,
             confidence_score=enriched["confidence_score"],
+            provider_type="agency",
+            enrolled=False,
         )
+        if status == "approved":
+            marketer.portal_token = secrets.token_urlsafe(24)
+        sync_marketer_domain_fields(marketer)
         db.session.add(marketer)
+        db.session.flush()
+        log_verification_decision(enriched, marketer_id=marketer.id, url=website)
         created += 1
 
+    dedupe_marketers_by_domain()
     db.session.commit()
     return {
         "created": created,
         "skipped_existing": skipped_existing,
         "skipped_low_confidence": skipped_low_confidence,
         "skipped_not_profile": skipped_not_profile,
+        "skipped_blacklisted": skipped_blacklisted,
         "considered": len(candidates),
         "query_plan": query_plan,
+        "full_query_plan_size": len(full_query_plan),
         "underrepresented": underrepresented,
+        "serpapi_queries_used": gather_stats.get("serpapi_queries_used", 0),
+        "skipped_known_catalog": gather_stats.get("skipped_known_catalog", 0),
+        "new_candidates_found": gather_stats.get("new_candidates_found", len(candidates)),
     }
+
+
+def _apply_enriched_to_marketer(marketer, enriched, website):
+    marketer.evidence_summary = enriched["evidence_summary"]
+    marketer.proof_strength = enriched["proof_strength"]
+    marketer.confidence_score = enriched["confidence_score"]
+    marketer.source = enriched["source"]
+    marketer.name = enriched["name"]
+    marketer.brand_name = enriched["brand_name"]
+    marketer.price_min = enriched.get("price_min")
+    marketer.price_max = enriched.get("price_max")
+    marketer.price_model = enriched.get("price_model")
+    marketer.price_source = enriched.get("price_source", "estimated")
+    sync_marketer_domain_fields(marketer)
 
 
 def build_query_plan(underrepresented):
@@ -120,133 +193,90 @@ def build_query_plan(underrepresented):
         "playlist pitching agency hire",
         "music PR firm services",
         "independent artist marketing agency -reddit -youtube -blog -tutorial",
+        "music marketing freelancer for independent artists",
+        "independent playlist pitching consultant",
+        "solo music promotion specialist hire",
     ]
     for service in underrepresented["services"]:
         base_queries.append(f"{service.replace('_', ' ')} music marketing")
     for genre in underrepresented["genres"]:
         base_queries.append(f"{genre} music marketing agency")
-    # Preserve order while removing duplicates.
     return list(dict.fromkeys(base_queries))
 
 
-def _gather_candidates(limit=25, queries=None):
+def _gather_candidates(limit=25, queries=None, stats=None):
     queries = queries or []
-    connectors = [WebDirectoryConnector(), SearchApiConnector(), RedditConnector()]
+    stats = stats if stats is not None else {}
+    catalog_domains = known_catalog_domains()
+    seen_domains = set(catalog_domains)
     all_candidates = []
-    seen_urls = set()
+    skipped_known_catalog = 0
 
-    for connector in connectors:
-        try:
-            discovered = connector.discover(queries)  # Search + Reddit signatures
-        except TypeError:
-            discovered = connector.discover()  # Seed connector signature
-        for item in discovered:
-            url = (item.get("url") or "").strip()
-            if not _looks_like_web_url(url) or url in seen_urls:
-                continue
-            ok, _ = classify_profile(
-                url,
-                title=item.get("title", ""),
-                snippet=item.get("snippet", ""),
+    def _try_add(item):
+        nonlocal skipped_known_catalog
+        url = (item.get("url") or "").strip()
+        if not _looks_like_web_url(url):
+            return False
+        key = domain_key(url)
+        if not key:
+            return False
+        if key in catalog_domains:
+            skipped_known_catalog += 1
+            return False
+        if key in seen_domains:
+            return False
+        if is_blacklisted(url):
+            return False
+        ok, _ = classify_profile(
+            url,
+            title=item.get("title", ""),
+            snippet=item.get("snippet", ""),
+        )
+        if not ok:
+            return False
+        seen_domains.add(key)
+        row = dict(item)
+        row["url"] = canonical_homepage_url(url)
+        all_candidates.append(row)
+        return True
+
+    # Free sources first: seeds
+    for item in WebDirectoryConnector().discover(known_domains=catalog_domains):
+        _try_add(item)
+        if len(all_candidates) >= limit:
+            break
+
+    stats["skipped_known_catalog"] = skipped_known_catalog
+
+    # SerpAPI only when we still need new candidates and budget allows
+    serp_budget = serpapi_query_budget()
+    serp_used = 0
+    if len(all_candidates) < limit and serp_budget > 0:
+        page_offset = next_serp_page_offset()
+        search = SearchApiConnector()
+        if search.api_key:
+            discovered = search.discover(
+                queries,
+                known_domains=catalog_domains,
+                max_queries=serp_budget,
+                page_offset=page_offset,
             )
-            if not ok:
-                continue
-            seen_urls.add(url)
-            all_candidates.append(item)
+            serp_used = getattr(search, "queries_run", 0)
+            for item in discovered:
+                if _try_add(item) and len(all_candidates) >= limit:
+                    break
+    stats["serpapi_queries_used"] = serp_used
+
+    # Reddit last (optional)
+    if len(all_candidates) < limit:
+        for item in RedditConnector().discover(queries, known_domains=catalog_domains):
+            _try_add(item)
             if len(all_candidates) >= limit:
-                return all_candidates
+                break
+
+    stats["new_candidates_found"] = len(all_candidates)
+    stats["skipped_known_catalog"] = skipped_known_catalog
     return all_candidates
-
-
-def _enrich_candidate(candidate):
-    website = candidate["url"]
-    title = candidate.get("title", "").strip()
-    snippet = candidate.get("snippet", "").strip()
-    text = _fetch_site_corpus(website)
-    corpus = f"{title}\n{snippet}\n{text}".lower()
-
-    is_service, reject_reason = classify_profile(website, title=title, snippet=snippet, text=text)
-    if not is_service:
-        return {
-            "name": title[:255] or "Unknown",
-            "brand_name": title[:255] or "Unknown",
-            "email": None,
-            "bio": snippet[:800],
-            "genres": [],
-            "services": [],
-            "languages": ["en"],
-            "geography": None,
-            "portfolio_urls": [website],
-            "evidence_summary": f"Rejected: {reject_reason}",
-            "proof_strength": 0,
-            "confidence_score": 0,
-            "source": candidate.get("source", "agent"),
-            "is_service_profile": False,
-        }
-
-    llm = _extract_with_llm(title=title, snippet=snippet, text=text, url=website)
-    services = llm.get("services") or infer_services_from_text(corpus)
-    genres = llm.get("genres") or infer_genres_from_text(corpus)
-    rating, review_count = _extract_review_signals(corpus)
-    email = llm.get("email") or _extract_email(corpus)
-
-    # Reliability-first scoring: prioritize independent review signals.
-    proof = min(100, int((rating / 5.0) * 50) + min(review_count, 50))
-    confidence = min(
-        100,
-        15
-        + (20 if services else 0)
-        + (15 if genres else 0)
-        + (30 if review_count > 0 else 0)
-        + (20 if rating >= 4.0 else 0),
-    )
-
-    domain = urlparse(website).netloc or "unknown"
-    raw_brand = llm.get("brand_name") or (title.split("|")[0].split("-")[0].strip() if title else domain)
-    raw_name = llm.get("name") or raw_brand
-    brand_name = normalize_brand_name(
-        website=website,
-        title=title,
-        brand_name=raw_brand,
-        name=raw_name,
-    )
-    name = brand_name
-    price_min, price_max, price_model = extract_pricing_from_text(text)
-    price_verified = price_min is not None
-    if price_min is None:
-        price_min, price_max, price_model = estimate_pricing_from_services(services)
-        price_verified = False
-    preferred_maturity = infer_preferred_maturity(text)
-    if review_count > 0 or rating >= 4.0:
-        proof = min(100, proof + 10)
-    evidence = (
-        f"Source={candidate.get('source', 'agent')}; profile=service; rating={rating:.1f}; "
-        f"reviews={review_count}; inferred_services={services}; inferred_genres={genres}; "
-        f"preferred_maturity={preferred_maturity}; price_verified={price_verified}"
-    )
-
-    return {
-        "name": name[:255],
-        "brand_name": brand_name[:255],
-        "email": email,
-        "bio": (llm.get("bio") or snippet[:800] or "Discovered by automated pipeline.")[:800],
-        "genres": genres,
-        "services": services,
-        "languages": ["en"],
-        "geography": None,
-        "price_min": price_min,
-        "price_max": price_max,
-        "price_model": price_model,
-        "price_verified": price_verified,
-        "preferred_maturity": preferred_maturity,
-        "affiliate_url": website,
-        "portfolio_urls": [website],
-        "evidence_summary": evidence[:1500],
-        "proof_strength": proof,
-        "confidence_score": confidence,
-        "source": candidate.get("source", "agent"),
-        "is_service_profile": True,
-    }
 
 
 def cleanup_marketer_catalog():
@@ -274,24 +304,31 @@ def cleanup_marketer_catalog():
             db.session.delete(marketer)
             removed_non_profile += 1
         else:
-            normalized = _normalize_website(marketer.website or "")
+            normalized = canonical_homepage_url(marketer.website or "")
             if normalized:
                 marketer.website = normalized
-            if marketer.source == "search_api" and (marketer.confidence_score or 0) >= 30:
+                marketer.domain_key = domain_key(normalized)
+            if should_auto_approve_marketer(marketer):
                 marketer.status = "approved"
+                if not marketer.portal_token:
+                    marketer.portal_token = secrets.token_urlsafe(24)
 
     db.session.flush()
 
     seen = {}
     for marketer in Marketer.query.all():
-        key = _normalize_website(marketer.website or "")
+        key = domain_key(marketer.website or "")
         if not key:
             continue
         if key in seen:
-            db.session.delete(marketer)
+            from app.services.site_blacklist import delete_marketer_cascade
+
+            delete_marketer_cascade(marketer)
             removed_duplicates += 1
         else:
             seen[key] = marketer.id
+            marketer.domain_key = key
+            marketer.website = canonical_homepage_url(marketer.website or "")
             kept += 1
 
     db.session.commit()
@@ -320,8 +357,11 @@ def backfill_marketer_card_fields():
             marketer.name = brand
             changed = True
         price_min, price_max, price_model = extract_pricing_from_text(text)
-        if price_min is None:
+        if price_min is not None:
+            price_source = "extracted"
+        else:
             price_min, price_max, price_model = estimate_pricing_from_services(marketer.services)
+            price_source = marketer.price_source or "estimated"
         if price_min is not None and (
             marketer.price_min != price_min
             or marketer.price_max != price_max
@@ -331,6 +371,9 @@ def backfill_marketer_card_fields():
             marketer.price_max = price_max
             marketer.price_model = price_model
             changed = True
+        if marketer.price_source != price_source and marketer.price_source != "verified":
+            marketer.price_source = price_source
+            changed = True
         if changed:
             updated += 1
         if not marketer.preferred_maturity:
@@ -338,6 +381,9 @@ def backfill_marketer_card_fields():
             changed = True
         if not marketer.affiliate_url and marketer.website:
             marketer.affiliate_url = marketer.website
+            changed = True
+        if marketer.status == "approved" and not marketer.portal_token:
+            marketer.portal_token = secrets.token_urlsafe(24)
             changed = True
     db.session.commit()
     return {"updated": updated}
@@ -385,15 +431,6 @@ def get_discovery_report():
     }
 
 
-def _fetch_site_corpus(base_url):
-    chunks = [_fetch_text(base_url)]
-    parsed = urlparse(base_url)
-    root = f"{parsed.scheme}://{parsed.netloc}"
-    for suffix in ("/pricing", "/services", "/packages"):
-        chunks.append(_fetch_text(root + suffix))
-    return "\n".join(chunks)[:40000]
-
-
 def _fetch_text(url):
     try:
         response = requests.get(url, timeout=6, headers={"User-Agent": "soundmatch-discovery/1.0"})
@@ -403,91 +440,18 @@ def _fetch_text(url):
         return ""
 
 
-def _extract_review_signals(corpus):
-    rating_match = re.search(r"([1-5](?:\.[0-9])?)\s*/\s*5", corpus)
-    review_match = re.search(r"([0-9]{1,4})\s+reviews?", corpus)
-    rating = float(rating_match.group(1)) if rating_match else 0.0
-    reviews = int(review_match.group(1)) if review_match else 0
-    return rating, reviews
-
-
-def _extract_email(corpus):
-    match = re.search(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", corpus)
-    if not match:
-        return None
-    return match.group(0)[:255]
-
-
 def _looks_like_web_url(url):
     return url.startswith("http://") or url.startswith("https://")
 
 
-def _normalize_website(url):
-    url = (url or "").strip()
-    if not url:
-        return ""
-    if not _looks_like_web_url(url):
-        return ""
-    parsed = urlparse(url)
-    normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path.rstrip('/')}"
-    return normalized
-
-
 def _find_existing_by_website(website):
-    existing = Marketer.query.filter_by(website=website).first()
+    key = domain_key(website)
+    if not key:
+        return None
+    existing = Marketer.query.filter_by(domain_key=key).first()
     if existing:
         return existing
-    # Backward compatibility for rows stored with a trailing slash variant.
-    alt = website + "/" if not website.endswith("/") else website[:-1]
-    return Marketer.query.filter_by(website=alt).first()
-
-
-def _extract_with_llm(title, snippet, text, url):
-    """
-    Optional LLM extraction hook.
-
-    Uses an OpenAI-compatible chat completion endpoint when configured.
-    """
-    api_url = os.environ.get("DISCOVERY_LLM_API_URL", "").strip()
-    api_key = os.environ.get("DISCOVERY_LLM_API_KEY", "").strip()
-    model = os.environ.get("DISCOVERY_LLM_MODEL", "gpt-4o-mini")
-    if not (api_url and api_key):
-        return {}
-
-    system_prompt = (
-        "Extract marketer profile JSON from provided webpage text. "
-        "Return ONLY valid JSON with keys: name, brand_name, bio, email, services, genres. "
-        "services and genres must be arrays of canonical slugs when known, else empty arrays."
-    )
-    user_prompt = (
-        f"URL: {url}\n"
-        f"TITLE: {title}\n"
-        f"SNIPPET: {snippet}\n"
-        f"TEXT:\n{text[:12000]}"
-    )
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        "temperature": 0.0,
-    }
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    try:
-        response = requests.post(api_url, json=payload, headers=headers, timeout=20)
-        response.raise_for_status()
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        # Extract first JSON object in case model wraps with prose.
-        json_match = re.search(r"\{.*\}", content, re.DOTALL)
-        if not json_match:
-            return {}
-        import json
-
-        parsed = json.loads(json_match.group(0))
-        parsed["services"] = [s for s in (parsed.get("services") or []) if s in CANONICAL_SERVICES]
-        parsed["genres"] = [g for g in (parsed.get("genres") or []) if g in CANONICAL_GENRES]
-        return parsed
-    except Exception:
-        return {}
+    for marketer in Marketer.query.filter(Marketer.website.isnot(None)).all():
+        if domain_key(marketer.website) == key:
+            return marketer
+    return None

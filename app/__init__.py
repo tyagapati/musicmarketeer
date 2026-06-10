@@ -52,23 +52,55 @@ def create_app(config_overrides=None):
 
     from app.services.marketer_display import format_price_range, normalize_brand_name
 
+    def _marketer_field(marketer, key, default=None):
+        if isinstance(marketer, dict):
+            return marketer.get(key, default)
+        return getattr(marketer, key, default)
+
     @app.template_filter("marketer_brand")
     def marketer_brand_filter(marketer):
         return normalize_brand_name(
-            website=getattr(marketer, "website", "") or "",
-            title=getattr(marketer, "name", "") or "",
-            brand_name=getattr(marketer, "brand_name", "") or "",
-            name=getattr(marketer, "name", "") or "",
+            website=_marketer_field(marketer, "website", "") or "",
+            title=_marketer_field(marketer, "name", "") or "",
+            brand_name=_marketer_field(marketer, "brand_name", "") or "",
+            name=_marketer_field(marketer, "name", "") or "",
         )
 
     @app.template_filter("marketer_price")
     def marketer_price_filter(marketer):
         return format_price_range(
-            getattr(marketer, "price_min", None),
-            getattr(marketer, "price_max", None),
-            getattr(marketer, "price_model", None),
-            getattr(marketer, "price_verified", False),
+            _marketer_field(marketer, "price_min"),
+            _marketer_field(marketer, "price_max"),
+            _marketer_field(marketer, "price_model"),
+            bool(_marketer_field(marketer, "price_verified", False)),
+            _marketer_field(marketer, "price_source", "estimated") or "estimated",
         )
+
+    from app.constants.marketer_taxonomy import taxonomy_label
+
+    @app.template_filter("taxonomy_label")
+    def taxonomy_label_filter(value):
+        return taxonomy_label(value)
+
+    @app.template_filter("provider_badge")
+    def provider_badge_filter(marketer):
+        provider_type = _marketer_field(marketer, "provider_type", "agency") or "agency"
+        enrolled = bool(_marketer_field(marketer, "enrolled", False))
+        if enrolled and provider_type == "solo":
+            return "Independent marketer"
+        if provider_type == "solo":
+            return "Solo marketer"
+        return "Agency"
+
+    from app.services.csrf import get_csrf_token, validate_csrf
+
+    @app.context_processor
+    def inject_csrf():
+        return {"csrf_token": get_csrf_token}
+
+    @app.before_request
+    def check_csrf():
+        validate_csrf()
 
     # No Alembic revisions are shipped yet; fresh Postgres (e.g. Render) has no tables.
     # create_all is idempotent and fixes "relation marketers does not exist" on first boot.
@@ -79,6 +111,12 @@ def create_app(config_overrides=None):
         from app.services.schema import ensure_schema
 
         ensure_schema()
+        from app.services.automation_settings import ensure_automation_defaults
+
+        ensure_automation_defaults()
+        from app.services.site_urls import dedupe_marketers_by_domain
+
+        dedupe_marketers_by_domain()
         # Demo catalogue for empty DB (e.g. fresh Render Postgres). Set SOUNDMATCH_SKIP_AUTO_SEED=1 to disable.
         if os.environ.get("SOUNDMATCH_SKIP_AUTO_SEED", "").lower() not in (
             "1",

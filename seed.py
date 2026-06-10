@@ -232,12 +232,38 @@ def seed_marketers():
         },
     ]
     
+    import secrets
+
+    from app.models import MarketerPackage
+
+    marketers = []
     for data in marketers_data:
+        data = dict(data)
+        data["provider_type"] = "solo"
+        data["enrolled"] = True
+        data.setdefault("portal_token", secrets.token_urlsafe(24))
         marketer = Marketer(**data)
         db.session.add(marketer)
-    
+        marketers.append(marketer)
+
+    db.session.flush()
+    for marketer in marketers:
+        primary_service = (marketer.services or ["playlist_pitching"])[0]
+        price = marketer.price_min or 149
+        db.session.add(
+            MarketerPackage(
+                marketer_id=marketer.id,
+                service=primary_service,
+                title=f"{marketer.brand_name or marketer.name} — starter package",
+                description="Demo marketplace package for local testing.",
+                price_cents=int(price) * 100,
+                delivery_days=14,
+                active=True,
+            )
+        )
+
     db.session.commit()
-    print(f"[OK] Seeded {len(marketers_data)} marketers")
+    print(f"[OK] Seeded {len(marketers_data)} platform marketers with packages")
 
 
 def ensure_demo_marketers_seeded():

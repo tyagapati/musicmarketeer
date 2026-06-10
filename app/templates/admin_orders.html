@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Marketplace orders – Admin{% endblock %}
+{% block content %}
+<h1>Marketplace orders</h1>
+<p style="color:#6b7280;font-size:.9rem;margin-bottom:1rem;">Per-order bookings on the platform marketplace.</p>
+{% for row in orders %}
+<div class="card" style="margin-bottom:0.75rem;">
+    <strong>#{{ row.id }}</strong> · {{ row.artist_name }} → {{ marketer_names.get(row.marketer_id, ('marketer #' ~ row.marketer_id)) }}
+    <span class="badge">{{ row.status }}</span>
+    <br><span style="font-size:.85rem;">{{ row.artist_email }} · ${{ (row.amount_cents / 100) | round(2) }}</span>
+    {% if row.brief_id %}<br><a href="/search/match/{{ row.brief_id }}" style="font-size:.8rem;">Brief #{{ row.brief_id }}</a>{% endif %}
+    <form method="POST" action="/admin/orders/{{ row.id }}/status" style="margin-top:.6rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+        {% include '_csrf.html' %}
+        <button class="btn btn-sm btn-secondary" name="status" value="paid" type="submit">Paid</button>
+        <button class="btn btn-sm btn-secondary" name="status" value="in_progress" type="submit">In progress</button>
+        <button class="btn btn-sm btn-success" name="status" value="delivered" type="submit">Delivered</button>
+        <button class="btn btn-sm btn-success" name="status" value="completed" type="submit">Completed</button>
+        <button class="btn btn-sm btn-danger" name="status" value="cancelled" type="submit">Cancelled</button>
+    </form>
+</div>
+{% else %}
+<div class="card"><p>No marketplace orders yet.</p></div>
+{% endif %}
+<p><a href="/admin/">← Dashboard</a></p>
+{% endblock %}

@@ -41,6 +41,9 @@ SERVICE_ALIASES = {
     "analytics": "analytics",
     "identity positioning": "identity_positioning",
     "brand strategy": "identity_positioning",
+    "content": "social_media_strategy",
+    "social media": "social_media_strategy",
+    "social": "social_media_strategy",
 }
 
 GENRE_ALIASES = {
@@ -95,3 +98,58 @@ def infer_genres_from_text(text):
         if phrase in corpus and canonical in CANONICAL_GENRES:
             found.add(canonical)
     return sorted(found)
+
+
+def _tokenize_csv(value):
+    if not value:
+        return []
+    if isinstance(value, (list, tuple)):
+        return [str(v).strip() for v in value if str(v).strip()]
+    return [part.strip() for part in str(value).split(",") if part.strip()]
+
+
+def normalize_genre_list(value):
+    """Turn comma-separated genre text into canonical slugs."""
+    found = []
+    seen = set()
+    for part in _tokenize_csv(value):
+        slug = canonicalize_genre(part)
+        if not slug:
+            key = part.strip().lower().replace("_", "-")
+            if key in CANONICAL_GENRES:
+                slug = key
+        if slug and slug not in seen:
+            seen.add(slug)
+            found.append(slug)
+    if not found and isinstance(value, str):
+        for slug in infer_genres_from_text(value):
+            if slug not in seen:
+                seen.add(slug)
+                found.append(slug)
+    return found
+
+
+def normalize_service_list(value):
+    """Turn comma-separated service text into canonical slugs."""
+    found = []
+    seen = set()
+    for part in _tokenize_csv(value):
+        slug = canonicalize_service(part)
+        if not slug:
+            key = part.strip().lower().replace("-", "_").replace(" ", "_")
+            if key in CANONICAL_SERVICES:
+                slug = key
+        if slug and slug not in seen:
+            seen.add(slug)
+            found.append(slug)
+    if not found and isinstance(value, str):
+        for slug in infer_services_from_text(value):
+            if slug not in seen:
+                seen.add(slug)
+                found.append(slug)
+    return found
+
+
+def taxonomy_label(slug):
+    """Human-readable label for a taxonomy slug."""
+    return (slug or "").replace("_", " ").replace("-", " ").title()

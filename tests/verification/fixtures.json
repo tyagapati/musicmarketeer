@@ -1,0 +1,243 @@
+[
+  {
+    "id": "agency_homepage",
+    "url": "https://beatboostagency.com/",
+    "title": "BeatBoost Music Marketing Agency",
+    "snippet": "Full-service music marketing for independent artists. Contact us for pricing.",
+    "text": "We are a music marketing agency. Our services include playlist pitching, social media strategy, and release campaigns. Contact us today. Pricing packages start at $500. 4.8 out of 5 based on 42 reviews.",
+    "expected_classify": true,
+    "notes": "Clear service profile with contact and pricing signals"
+  },
+  {
+    "id": "agency_services_page",
+    "url": "https://soundwavepromo.com/services",
+    "title": "SoundWave Promo | Music Promotion Services",
+    "snippet": "Playlist pitching and ads for indie artists.",
+    "text": "Our services: playlist pitching, paid ads, PR. Work with us. Case studies from clients. Request a quote.",
+    "expected_classify": true
+  },
+  {
+    "id": "listicle_best_agencies",
+    "url": "https://example.com/blog/best-music-marketing-companies",
+    "title": "10 Best Music Marketing Companies in 2025",
+    "snippet": "Our top picks for artists looking to grow.",
+    "text": "In this article we compare the best music marketing companies. How to choose an agency. Top 10 list.",
+    "expected_classify": false
+  },
+  {
+    "id": "tutorial_how_to",
+    "url": "https://example.com/how-to-market-your-music",
+    "title": "How to Market Your Music in 2025: A Complete Guide",
+    "snippet": "Step-by-step tutorial for independent artists.",
+    "text": "How to market your music. Tips for beginners. This blog post walks you through social media strategy.",
+    "expected_classify": false
+  },
+  {
+    "id": "reddit_thread",
+    "url": "https://www.reddit.com/r/WeAreTheMusicMakers/comments/abc123/",
+    "title": "Anyone know a good music marketer?",
+    "snippet": "Looking for recommendations.",
+    "text": "Comments and discussion about music marketing.",
+    "expected_classify": false
+  },
+  {
+    "id": "youtube_video",
+    "url": "https://www.youtube.com/watch?v=abc123",
+    "title": "Music Marketing Tips for Artists",
+    "snippet": "Watch this tutorial.",
+    "text": "Subscribe for more tips.",
+    "expected_classify": false
+  },
+  {
+    "id": "medium_article",
+    "url": "https://medium.com/@author/why-you-need-a-music-marketer",
+    "title": "Why You Should Hire a Music Marketer",
+    "snippet": "Published on Medium.",
+    "text": "Written by an author. Read more. In this article we discuss recommendations for artists.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_minimal_homepage",
+    "url": "https://indiepush.co/",
+    "title": "IndiePush",
+    "snippet": "Music promotion agency.",
+    "text": "IndiePush is a music marketing agency offering promotion packages and campaign management for artists.",
+    "expected_classify": true
+  },
+  {
+    "id": "editorial_no_services",
+    "url": "https://musicbiz.example.com/news/playlist-pitching-guide",
+    "title": "The Ultimate Guide to Playlist Pitching",
+    "snippet": "Published on MusicBiz. Written by editor.",
+    "text": "In this article we explain playlist pitching. Read more. Step-by-step guide for artists. This blog post covers tips.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_with_reviews",
+    "url": "https://clutchagency.example.com/",
+    "title": "Clutch Music Marketing",
+    "snippet": "Rated 4.9/5 with 120 reviews.",
+    "text": "Music marketing agency. Our clients include indie and pop artists. 4.9/5 rating. 120 reviews on Clutch. Hire us. Pricing available.",
+    "expected_classify": true
+  },
+  {
+    "id": "compare_vs_article",
+    "url": "https://example.com/agency-a-vs-agency-b",
+    "title": "Agency A vs Agency B: Which is Better?",
+    "snippet": "Compare the top options.",
+    "text": "We compare two music marketing agencies. Review of features and pricing.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_pricing_page",
+    "url": "https://promolaunch.io/pricing",
+    "title": "PromoLaunch Pricing",
+    "snippet": "Transparent pricing for music promotion.",
+    "text": "Pricing packages from $300. Book a call. Our services include ads and release campaigns. Contact us.",
+    "expected_classify": true
+  },
+  {
+    "id": "wikipedia_entry",
+    "url": "https://www.wikipedia.org/wiki/Music_marketing",
+    "title": "Music marketing - Wikipedia",
+    "snippet": "Overview of music marketing.",
+    "text": "Music marketing is the process of promoting music.",
+    "expected_classify": false
+  },
+  {
+    "id": "linkedin_company",
+    "url": "https://www.linkedin.com/company/some-agency",
+    "title": "Some Agency | LinkedIn",
+    "snippet": "Company page.",
+    "text": "Follow us on LinkedIn.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_latin_genre",
+    "url": "https://latinbeatsmarketing.com/",
+    "title": "Latin Beats Marketing",
+    "snippet": "Reggaeton and Latin pop promotion.",
+    "text": "We help Latin artists grow. Music promotion service. Reggaeton and latin-pop specialists. Get in touch. Our services.",
+    "expected_classify": true
+  },
+  {
+    "id": "podcast_episode",
+    "url": "https://example.com/podcast/episode-42",
+    "title": "Interview with a Music Marketing Expert",
+    "snippet": "Podcast episode about promotion.",
+    "text": "In this podcast we interview an expert. Listen now.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_electronic",
+    "url": "https://edbuzz.agency/",
+    "title": "EDBuzz Agency",
+    "snippet": "Electronic music promotion.",
+    "text": "EDBuzz is a full-service music marketing agency for electronic artists. Campaign packages. Portfolio. Schedule a call.",
+    "expected_classify": true
+  },
+  {
+    "id": "top_5_listicle",
+    "url": "https://example.com/top-5-music-marketers",
+    "title": "Top 5 Music Marketers You Should Know",
+    "snippet": "Curated list for artists.",
+    "text": "Top 5 music marketers. Best companies for indie artists.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_pr_firm",
+    "url": "https://pressplaypr.com/",
+    "title": "PressPlay PR",
+    "snippet": "Music PR firm for independent artists.",
+    "text": "PressPlay is a music PR firm. Public relations and press campaigns. Our clients. Contact us for a quote.",
+    "expected_classify": true
+  },
+  {
+    "id": "blog_subdirectory",
+    "url": "https://someagency.com/blog/music-marketing-tips",
+    "title": "Music Marketing Tips from Some Agency",
+    "snippet": "Blog post with tips.",
+    "text": "Tips for artists. How to grow your audience.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_homepage_agency_words",
+    "url": "https://newpromo.studio/",
+    "title": "NewPromo Studio",
+    "snippet": "Promotion for emerging artists.",
+    "text": "NewPromo Studio — music promotion and marketing for indie artists.",
+    "expected_classify": true
+  },
+  {
+    "id": "quora_question",
+    "url": "https://www.quora.com/What-is-the-best-music-marketer",
+    "title": "What is the best music marketer?",
+    "snippet": "Quora answers.",
+    "text": "Answers from the community.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_social_only_snippet",
+    "url": "https://growthharmony.com/",
+    "title": "Growth Harmony",
+    "snippet": "Social media strategy for musicians.",
+    "text": "Growth Harmony offers social media strategy and content planning. We help artists build audiences. Work with us.",
+    "expected_classify": true
+  },
+  {
+    "id": "insufficient_signals",
+    "url": "https://randomsite.example.com/page",
+    "title": "Random Page",
+    "snippet": "Some generic content.",
+    "text": "Welcome to our website. About us. News and updates.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_hiphop",
+    "url": "https://hiphoprise.co/",
+    "title": "HipHop Rise Marketing",
+    "snippet": "Hip-hop artist promotion.",
+    "text": "Hip-hop and R&B music marketing agency. Playlist pitching and ads. Case studies. Pricing on request. Contact us.",
+    "expected_classify": true
+  },
+  {
+    "id": "started_agency_story",
+    "url": "https://example.com/i-started-a-music-marketing-agency",
+    "title": "How I Started a Music Marketing Agency",
+    "snippet": "Personal story and tutorial.",
+    "text": "How I started a music marketing agency. Tips for entrepreneurs.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_analytics_focus",
+    "url": "https://dataloud.music/",
+    "title": "DataLoud Music Analytics",
+    "snippet": "Analytics and growth for artists.",
+    "text": "DataLoud provides analytics and campaign optimization for musicians. Our services. Request a quote. Music marketing.",
+    "expected_classify": true
+  },
+  {
+    "id": "hypebot_editorial",
+    "url": "https://www.hypebot.com/hypebot/2024/01/marketing-trends.html",
+    "title": "Music Marketing Trends 2024",
+    "snippet": "Industry news.",
+    "text": "Music business news and analysis.",
+    "expected_classify": false
+  },
+  {
+    "id": "agency_identity_branding",
+    "url": "https://brandtone.art/",
+    "title": "BrandTone Artist Branding",
+    "snippet": "Identity and positioning for musicians.",
+    "text": "BrandTone helps artists with identity positioning and brand strategy. Music marketing agency. Portfolio. Get in touch.",
+    "expected_classify": true
+  },
+  {
+    "id": "tiktok_social",
+    "url": "https://www.tiktok.com/@somecreator",
+    "title": "Creator on TikTok",
+    "snippet": "Social profile.",
+    "text": "Follow for music tips.",
+    "expected_classify": false
+  }
+]

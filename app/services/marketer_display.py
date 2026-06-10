@@ -125,9 +125,14 @@ def extract_pricing_from_text(text):
     return None, None, None
 
 
-def format_price_range(price_min, price_max, price_model=None, price_verified=False):
+def format_price_range(price_min, price_max, price_model=None, price_verified=False, price_source="estimated"):
     """Human-readable price badge text for cards."""
-    prefix = "" if price_verified else "Est. "
+    if price_source == "verified" or price_verified:
+        prefix = ""
+    elif price_source == "extracted":
+        prefix = ""
+    else:
+        prefix = "Est. "
     if price_min is None and price_max is None:
         return f"{prefix}Pricing on request".strip()
     low = price_min or 0

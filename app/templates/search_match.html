@@ -3,10 +3,7 @@
 {% block container_class %}container--wide{% endblock %}
 {% block extra_head %}
 <style>
-  .match-shell{
-    max-width: 1240px;
-    margin: 0 auto;
-  }
+  .match-shell{ max-width: 1240px; margin: 0 auto; }
   .match-hero{
     border: 1px solid rgba(255,255,255,.12);
     border-radius: 18px;
@@ -19,6 +16,13 @@
   }
   .match-hero h1{ margin: 0 0 .35rem; }
   .match-hero p{ margin: 0; color: var(--muted); }
+  .match-info-card{
+    border: 1px solid rgba(34,211,238,.28);
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
+    background: rgba(34,211,238,.08);
+  }
   .match-grid{
     display:grid;
     grid-template-columns: repeat(2, minmax(0,1fr));
@@ -35,6 +39,7 @@
     display:flex;
     flex-direction:column;
   }
+  .mm-card--locked{ opacity: .72; }
   .mm-head{
     display:flex;
     align-items:flex-start;
@@ -42,34 +47,9 @@
     gap:.6rem;
     padding: .95rem .95rem .5rem;
   }
-  .mm-person{
-    display:flex;
-    align-items:center;
-    gap:.65rem;
-    min-width:0;
-  }
-  .mm-avatar{
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid rgba(255,255,255,.16);
-    box-shadow: 0 6px 16px rgba(0,0,0,.32);
-    flex-shrink: 0;
-  }
-  .mm-name{
-    margin: 0;
-    font-size: 1.02rem;
-    line-height:1.25;
-    color:#eff3ff;
-  }
+  .mm-name{ margin: 0; font-size: 1.02rem; line-height:1.25; color:#eff3ff; }
   .mm-name a{ color:inherit; text-decoration:none; }
   .mm-name a:hover{ text-decoration: underline; }
-  .mm-brand{
-    margin:.18rem 0 0;
-    color:var(--muted2);
-    font-size:.85rem;
-  }
   .mm-score{
     flex-shrink:0;
     border: 1px solid rgba(255,255,255,.14);
@@ -80,18 +60,8 @@
     background: rgba(255,255,255,.04);
   }
   .mm-body{ padding: 0 .95rem .75rem; }
-  .mm-bio{
-    margin: .45rem 0 .68rem;
-    color: var(--muted);
-    font-size:.92rem;
-    line-height:1.55;
-  }
-  .mm-reasons{
-    margin: .45rem 0 .3rem;
-    display:flex;
-    flex-wrap:wrap;
-    gap:.35rem;
-  }
+  .mm-bio{ margin: .45rem 0 .68rem; color: var(--muted); font-size:.92rem; line-height:1.55; }
+  .mm-reasons{ margin: .45rem 0 .3rem; display:flex; flex-wrap:wrap; gap:.35rem; }
   .reason-pill{
     font-size:.76rem;
     border:1px solid rgba(255,255,255,.12);
@@ -108,6 +78,7 @@
     align-items:center;
     justify-content:space-between;
     gap:.6rem;
+    flex-wrap:wrap;
   }
   .mm-meta{ font-size:.8rem; color:var(--muted2); }
   .mm-actions{ display:flex; gap:.45rem; flex-wrap: wrap; }
@@ -118,62 +89,74 @@
 {% block content %}
 <div class="match-shell">
   <section class="match-hero">
-    <h1>Top matches for {{ brief.artist_name }}</h1>
+    <h1>Platform matches for {{ brief.artist_name }}</h1>
     <p>Genres: {{ brief.genres | join(", ") }} · Budget: ${{ brief.budget_min }}–${{ brief.budget_max }} · Tier: {{ brief.maturity_tier }}</p>
   </section>
+
+  <section class="match-info-card">
+    <strong>SoundMatch marketplace</strong>
+    <p style="margin:.45rem 0 0;color:var(--muted);">
+      These are enrolled marketers on our platform with bookable packages. Preview your top {{ preview_limit }} matches, then book directly — no agencies, no off-platform redirects.
+    </p>
+  </section>
+
   {% if results %}
-    <section class="match-grid" aria-label="Matched marketers">
+    <section class="match-grid" aria-label="Matched platform marketers">
       {% for r in results %}
-      <article class="mm-card">
+      {% set locked = loop.index > preview_limit %}
+      <article class="mm-card{% if locked %} mm-card--locked{% endif %}">
         <div class="mm-head">
-          <div class="mm-person">
-            <img class="mm-avatar" src="https://i.pravatar.cc/96?img={{ (r.marketer.id % 70) + 1 }}" alt="Sample profile for {{ r.marketer | marketer_brand }}" loading="lazy">
-            <div>
-              <h2 class="mm-name"><a href="/search/marketer/{{ r.marketer.id }}">{{ r.marketer | marketer_brand }}</a></h2>
-            </div>
+          <div>
+            <h2 class="mm-name">
+              {% if locked %}
+                Match #{{ loop.index }} (preview limit)
+              {% else %}
+                <a href="/search/marketer/{{ r.marketer.id }}?brief_id={{ brief.id }}">{{ r.marketer | marketer_brand }}</a>
+              {% endif %}
+            </h2>
           </div>
-          <span class="mm-score">{{ (r.match_score * 100) | int }}% match</span>
+          {% if not locked %}<span class="mm-score">{{ (r.match_score * 100) | int }}% match</span>{% endif %}
         </div>
         <div class="mm-body">
+          {% if not locked %}
           <p>
             {% for genre in r.marketer.genres[:4] %}<span class="badge">{{ genre }}</span>{% endfor %}
-            {% if r.marketer.genres and r.marketer.genres|length > 4 %}<span class="badge">+{{ r.marketer.genres|length - 4 }}</span>{% endif %}
           </p>
-          <p class="mm-bio">{{ r.marketer.bio[:140] if r.marketer.bio else 'No bio provided yet.' }}{% if r.marketer.bio and r.marketer.bio|length > 140 %}…{% endif %}</p>
+          <p class="mm-bio">{{ r.marketer.bio[:140] if r.marketer.bio else 'Platform marketer on SoundMatch.' }}{% if r.marketer.bio and r.marketer.bio|length > 140 %}…{% endif %}</p>
           <div class="mm-reasons">
             {% for reason in r.top_reasons[:3] %}
               <span class="reason-pill">✓ {{ reason }}</span>
             {% endfor %}
           </div>
+          {% else %}
+          <p class="mm-bio">View all matches on each marketer's profile to compare packages and book.</p>
+          {% endif %}
         </div>
         <div class="mm-foot">
-          <span class="mm-meta">{{ r.marketer | marketer_price }} · {{ (r.marketer.services|length) if r.marketer.services else 0 }} services</span>
+          {% if not locked %}
+          <span class="mm-meta">
+            {% if r.marketer.cheapest_package_cents %}from {{ format_price_cents(r.marketer.cheapest_package_cents) }}{% else %}packages available{% endif %}
+            · proof {{ r.marketer.proof_strength or 0 }}%
+          </span>
           <div class="mm-actions">
-            <a href="/search/marketer/{{ r.marketer.id }}" class="btn btn-secondary btn-sm">View profile</a>
+            <a href="/search/marketer/{{ r.marketer.id }}?brief_id={{ brief.id }}" class="btn btn-success btn-sm">View packages</a>
           </div>
+          {% endif %}
         </div>
       </article>
       {% endfor %}
     </section>
-    <section class="card" style="margin-top:1rem;">
-      <h2>Did you hire one of these marketers?</h2>
-      <form method="POST">
-        <p><label>Marketer<br>
-          <select name="marketer_id" required>
-            {% for r in results %}
-            <option value="{{ r.marketer.id }}">{{ r.marketer.brand_name or r.marketer.name }}</option>
-            {% endfor %}
-          </select>
-        </label></p>
-        <p><label><input type="radio" name="hired" value="yes" checked> Yes, I hired them</label>
-           <label style="margin-left:1rem;"><input type="radio" name="hired" value="no"> Not yet</label></p>
-        <p><label>Rating (1-5)<br><input type="number" name="rating" min="1" max="5"></label></p>
-        <p><label>Notes<br><textarea name="notes" rows="2" style="width:100%;"></textarea></label></p>
-        <button class="btn btn-secondary btn-sm" type="submit">Submit feedback</button>
-      </form>
-    </section>
   {% else %}
-    <div class="card"><p>No matches found. Try broadening your genres or budget.</p></div>
+    <div class="card">
+      <p><strong>No platform marketers available yet.</strong></p>
+      <p style="color:var(--muted);margin-top:.5rem;">
+        We're onboarding independent marketers with bookable packages. Check back soon or
+        <a href="/marketer/apply">apply as a marketer</a>.
+      </p>
+      {% if platform_count == 0 %}
+      <p style="font-size:.85rem;color:#6b7280;margin-top:.5rem;">Admin: approve marketer applications and add packages in their portal.</p>
+      {% endif %}
+    </div>
   {% endif %}
   <a href="/artist/intake" class="match-bottom-link">← New brief</a>
 </div>
