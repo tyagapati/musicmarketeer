@@ -98,6 +98,18 @@ def create_app(config_overrides=None):
     def inject_csrf():
         return {"csrf_token": get_csrf_token}
 
+    from app.services.onboarding import app_base_url as _app_base_url
+    from app.services.onboarding import marketer_apply_url as _marketer_apply_url
+    from app.services.onboarding import onboarding_email_body
+
+    @app.context_processor
+    def inject_onboarding_helpers():
+        return {
+            "app_base_url": _app_base_url(),
+            "marketer_apply_url": _marketer_apply_url(),
+            "onboarding_email": onboarding_email_body,
+        }
+
     @app.before_request
     def check_csrf():
         validate_csrf()

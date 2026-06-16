@@ -153,6 +153,21 @@ Fees (`.env`): `PLATFORM_FEE_PERCENT=20`, `BUYER_SERVICE_FEE_PERCENT=5`, `REQUIR
 
 With `PAYMENTS_DEV_BYPASS=1`, bookings skip Connect (local testing only).
 
+### Stripe test setup (local, before recruiting)
+
+Full recruitment playbook: **`docs/MARKETER_ONBOARDING.md`**.
+
+1. Stripe Dashboard → Test mode → API keys → `STRIPE_SECRET_KEY=sk_test_...`
+2. Enable Connect Express accounts
+3. Run `stripe listen --forward-to localhost:8000/search/stripe/webhook`
+4. Set `STRIPE_WEBHOOK_SECRET=whsec_...` from CLI output; restart Flask
+5. Set `PAYMENTS_DEV_BYPASS=0`, `REQUIRE_STRIPE_CONNECT=1`
+6. Test checkout with card `4242 4242 4242 4242`
+
+Remote marketers need a **public `APP_URL`** (tunnel or staging) to complete Connect — not `127.0.0.1`.
+
+Admin → **Marketers** shows Stripe status, onboarding badges, and copy buttons for portal links and onboarding emails.
+
 ### Order lifecycle
 
 `pending_payment` → `in_progress` (paid) → `delivered` (marketer) → `completed` (artist confirms + optional rating)

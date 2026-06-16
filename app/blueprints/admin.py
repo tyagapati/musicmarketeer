@@ -13,7 +13,23 @@ from app.models import (
     MarketplaceOrder,
     VerificationDecision,
 )
+from app.constants.marketer_taxonomy import (
+    CANONICAL_GENRES,
+    CANONICAL_SERVICES,
+    normalize_genre_list,
+    normalize_service_list,
+)
+from app.services.connect_onboarding import connect_configured
 from app.services.marketplace import marketplace_gmv_stats, platform_marketers_query
+from app.services.onboarding import (
+    active_package_counts,
+    marketer_onboarding_status,
+    marketer_portal_url,
+    onboarding_email_body,
+    provision_from_application,
+    provision_platform_marketer,
+)
+from app.services.payments import payments_dev_bypass
 from app.services.verification_decision import would_auto_approve_if_enabled
 from app.services.admin_auth import is_admin_authenticated, require_admin, verify_admin_password
 from app.services.automation_settings import (
@@ -115,12 +131,20 @@ def marketers():
     }
     all_marketers = Marketer.query.order_by(Marketer.status).all()
     latest_decisions = _latest_verification_decisions(all_marketers)
+    pkg_counts = active_package_counts([m.id for m in all_marketers])
+    onboarding = {
+        m.id: marketer_onboarding_status(m, active_packages=pkg_counts.get(m.id, 0))
+        for m in all_marketers
+    }
     return render_template(
         "admin_marketers.html",
         marketers=all_marketers,
         latest_decisions=latest_decisions,
+        onboarding=onboarding,
         result=result,
         auto_approve_enabled=is_automation_enabled("auto_approve_marketers"),
+        stripe_configured=connect_configured(),
+        payments_dev_bypass=payments_dev_bypass(),
     )
 
 
@@ -311,53 +335,91 @@ def discovery_report():
     return render_template("admin_discovery_report.html", report=report)
 
 
+@admin_bp.route("/marketers/add", methods=["GET", "POST"])
+@require_admin
+def add_marketer():
+    form = {}
+    if request.method == "POST":
+        f = request.form
+        services = normalize_service_list(f.getlist("services"))
+        genres = normalize_genre_list(f.getlist("genres"))
+        brand_name = f.get("brand_name", "").strip()
+        website = f.get("website", "").strip()
+        email = f.get("email", "").strip()
+        bio = f.get("bio", "").strip()
+        try:
+            price_dollars = max(1, int(f.get("price_dollars") or 149))
+        except (TypeError, ValueError):
+            price_dollars = 149
+        try:
+            delivery_days = max(1, int(f.get("delivery_days") or 14))
+        except (TypeError, ValueError):
+            delivery_days = 14
+        form = {
+            "brand_name": brand_name,
+            "website": website,
+            "email": email,
+            "bio": bio,
+            "services": services,
+            "genres": genres,
+            "price_dollars": price_dollars,
+            "delivery_days": delivery_days,
+        }
+        if not brand_name or not website:
+            flash("Brand name and website are required.", "error")
+        elif not services:
+            flash("Select at least one service.", "error")
+        else:
+            marketer = provision_platform_marketer(
+                brand_name=brand_name,
+                website=website,
+                email=email,
+                bio=bio,
+                services=services,
+                genres=genres,
+                source="admin_manual",
+                price_cents=price_dollars * 100,
+                delivery_days=delivery_days,
+            )
+            db.session.commit()
+            portal = marketer_portal_url(marketer)
+            flash(f"Created {brand_name}. Portal: {portal}", "success")
+            return redirect(url_for("admin.marketers"))
+    return render_template(
+        "admin_add_marketer.html",
+        form=form,
+        canonical_genres=CANONICAL_GENRES,
+        canonical_services=CANONICAL_SERVICES,
+    )
+
+
 @admin_bp.route("/applications")
 @require_admin
 def applications():
     apps = MarketerApplication.query.order_by(MarketerApplication.created_at.desc()).all()
-    return render_template("admin_applications.html", applications=apps)
+    approved_brands = {a.brand_name for a in apps if a.status == "approved"}
+    marketers_by_brand = {
+        m.brand_name: m
+        for m in Marketer.query.filter(Marketer.brand_name.in_(approved_brands or [""])).all()
+    }
+    return render_template(
+        "admin_applications.html",
+        applications=apps,
+        marketers_by_brand=marketers_by_brand,
+        stripe_configured=connect_configured(),
+        payments_dev_bypass=payments_dev_bypass(),
+    )
 
 
 @admin_bp.route("/applications/<int:id>/approve", methods=["POST"])
 @require_admin
 def approve_application(id):
     app_row = MarketerApplication.query.get_or_404(id)
-    marketer = Marketer(
-        name=app_row.brand_name,
-        brand_name=app_row.brand_name,
-        website=app_row.website,
-        email=app_row.email,
-        bio=app_row.bio,
-        genres=app_row.genres or [],
-        services=app_row.services or [],
-        languages=["en"],
-        status="approved",
-        source="onboarding",
-        price_verified=False,
-        price_source="estimated",
-        affiliate_url=app_row.website,
-        portal_token=secrets.token_urlsafe(24),
-        provider_type="solo",
-        enrolled=True,
-    )
-    sync_marketer_domain_fields(marketer)
+    marketer = provision_from_application(app_row)
     app_row.status = "approved"
-    db.session.add(marketer)
-    db.session.flush()
-    primary_service = (app_row.services or ["playlist_pitching"])[0]
-    db.session.add(
-        MarketerPackage(
-            marketer_id=marketer.id,
-            service=primary_service,
-            title=f"{app_row.brand_name} — {primary_service.replace('_', ' ').title()}",
-            description=app_row.bio or "Custom campaign support for independent artists.",
-            price_cents=14900,
-            delivery_days=14,
-            active=True,
-        )
-    )
     db.session.commit()
-    flash(f"Approved {app_row.brand_name} with a starter package. Share portal: /marketer/portal/{marketer.portal_token}", "success")
+    portal = marketer_portal_url(marketer)
+    flash(f"Approved {app_row.brand_name} with a starter package. Portal: {portal}", "success")
     return redirect(url_for("admin.applications"))
 
 

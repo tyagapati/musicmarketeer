@@ -2,26 +2,38 @@
 {% block title %}Marketers – Admin – SoundMatch{% endblock %}
 {% block content %}
 <h1>Manage marketers</h1>
-<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
-    <form method="POST" action="/admin/ingest" class="discovery-form">
+<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center;">
+    <a href="{{ url_for('admin.add_marketer') }}" class="btn btn-sm btn-primary">+ Add marketer</a>
+    <form method="POST" action="/admin/ingest" class="discovery-form" style="margin:0;">
         {% include '_csrf.html' %}
         <button type="submit" class="btn btn-sm btn-success discovery-submit">Run discovery cycle</button>
     </form>
-    <form method="POST" action="/admin/catalog/verify-top-prices">
+    <form method="POST" action="/admin/catalog/verify-top-prices" style="margin:0;">
         {% include '_csrf.html' %}
         <button class="btn btn-sm btn-secondary">Verify top 10 prices</button>
     </form>
     {% if auto_approve_enabled %}
-    <form method="POST" action="/admin/catalog/auto-approve">
+    <form method="POST" action="/admin/catalog/auto-approve" style="margin:0;">
         {% include '_csrf.html' %}
         <button class="btn btn-sm btn-secondary">Auto-approve high confidence</button>
     </form>
     {% else %}
-    <span style="font-size:0.85rem;color:#6b7280;align-self:center;">
+    <span style="font-size:0.85rem;color:#6b7280;">
         Batch auto-approve disabled — turn on under Admin → Automation
     </span>
     {% endif %}
 </div>
+{% if stripe_configured and payments_dev_bypass %}
+<div class="card" style="margin-bottom:1rem;border-color:#f59e0b;">
+    <strong>Stripe is configured but PAYMENTS_DEV_BYPASS=1.</strong>
+    <span style="font-size:0.85rem;color:#6b7280;">Bookings skip checkout and Connect gates. Set PAYMENTS_DEV_BYPASS=0 before real payment testing.</span>
+</div>
+{% elif not stripe_configured %}
+<div class="card" style="margin-bottom:1rem;">
+    <strong>Stripe not configured.</strong>
+    <span style="font-size:0.85rem;color:#6b7280;">Add STRIPE_SECRET_KEY and run <code>stripe listen</code> for Connect + checkout. See docs/MARKETER_ONBOARDING.md.</span>
+</div>
+{% endif %}
 {% if result.queued %}
 <div class="card" style="margin-bottom:1rem;">
     <strong>Discovery queued.</strong> Check back after worker processing.
@@ -43,18 +55,33 @@
 </div>
 {% endif %}
 {% for m in marketers %}
-<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
-    <div>
+{% set ob = onboarding.get(m.id, {}) %}
+<div class="card" style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+    <div style="flex:1;min-width:260px;">
         <strong>{{ m | marketer_brand }}</strong>
         <span class="badge {{ m.status }}">{{ m.status }}</span>
+        {% if ob.label %}<span class="badge {{ ob.tone }}" style="font-size:.72rem;">Onboarding: {{ ob.label }}</span>{% endif %}
         <span class="badge{% if m.enrolled and m.provider_type == 'solo' %} approved{% endif %}" style="font-size:.75rem;">{{ m | provider_badge }}{% if m.enrolled %} · enrolled{% endif %}</span>
         {% if m.enrolled and m.payouts_enabled %}<span class="badge approved" style="font-size:.7rem;">Connect OK</span>{% elif m.enrolled and m.stripe_connect_account_id %}<span class="badge pending" style="font-size:.7rem;">Connect pending</span>{% elif m.enrolled %}<span class="badge pending" style="font-size:.7rem;">No Connect</span>{% endif %}
+        {% if ob.active_packages %}<span class="badge approved" style="font-size:.7rem;">{{ ob.active_packages }} pkg</span>{% endif %}
         <span style="font-size:0.82rem;color:#9ca3af;margin-left:0.35rem;">{{ m | marketer_price }}</span>
         <br><span style="font-size:0.8rem;color:#6b7280;">genres: {{ m.genres | join(", ") or "n/a" }}</span>
         <br><span style="font-size:0.8rem;color:#6b7280;">services: {{ m.services | join(", ") or "n/a" }}</span>
         <br><span style="font-size:0.8rem;color:#6b7280;">source: {{ m.source or "unknown" }} | proof: {{ m.proof_strength or 0 }} | confidence: {{ m.confidence_score or 0 }} | price: {{ m.price_source or "estimated" }}{% if m.price_verified %} (verified){% endif %}</span>
         {% if m.status == 'approved' and m.portal_token %}
-        <br><span style="font-size:0.78rem;color:#6b7280;">Portal: /marketer/portal/{{ m.portal_token }}</span>
+        {% set portal_url = app_base_url ~ '/marketer/portal/' ~ m.portal_token %}
+        <br><span style="font-size:0.78rem;color:#6b7280;word-break:break-all;">Portal: {{ portal_url }}</span>
+        <div style="margin-top:0.35rem;display:flex;gap:0.35rem;flex-wrap:wrap;">
+            {% with text=portal_url, label="Copy portal link" %}
+            {% include '_copy_button.html' %}
+            {% endwith %}
+            {% if m.email %}
+            {% set email_body = onboarding_email(m, include_connect=(stripe_configured and not payments_dev_bypass)) %}
+            {% with text=email_body, label="Copy onboarding email" %}
+            {% include '_copy_button.html' %}
+            {% endwith %}
+            {% endif %}
+        </div>
         {% endif %}
         {% if m.website %}
         <br><a href="{{ m.website }}" target="_blank" rel="noopener noreferrer" style="font-size:0.82rem;">Visit original site ↗</a>
@@ -103,9 +130,9 @@
     </div>
 </div>
 {% else %}
-<div class="card"><p>No marketers yet.</p></div>
+<div class="card"><p>No marketers yet. <a href="{{ url_for('admin.add_marketer') }}">Add one</a> or wait for applications.</p></div>
 {% endfor %}
-<p style="margin-top:1rem;"><a href="/admin/">← Dashboard</a></p>
+<p style="margin-top:1rem;"><a href="/admin/">← Dashboard</a> · <a href="{{ url_for('admin.applications') }}">Applications</a></p>
 <script>
 document.querySelectorAll(".discovery-form").forEach(function (form) {
   form.addEventListener("submit", function () {
@@ -114,6 +141,16 @@ document.querySelectorAll(".discovery-form").forEach(function (form) {
       btn.disabled = true;
       btn.textContent = "Running discovery…";
     }
+  });
+});
+document.querySelectorAll(".copy-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var text = btn.getAttribute("data-copy") || "";
+    navigator.clipboard.writeText(text).then(function () {
+      var prev = btn.textContent;
+      btn.textContent = "Copied!";
+      setTimeout(function () { btn.textContent = prev; }, 1500);
+    });
   });
 });
 </script>

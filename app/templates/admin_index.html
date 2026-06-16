@@ -67,6 +67,7 @@
 {% endif %}
 <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
     <a href="/admin/marketers" class="btn btn-primary">Manage marketers →</a>
+    <a href="{{ url_for('admin.add_marketer') }}" class="btn btn-secondary">Add marketer</a>
     <a href="/admin/orders" class="btn btn-secondary">Marketplace orders</a>
     <a href="/admin/discovery-report" class="btn btn-secondary">Discovery report</a>
     <a href="/admin/applications" class="btn btn-secondary">Applications ({{ apps_pending }})</a>
