@@ -14,9 +14,8 @@ from app.services.lastfm_client import (
 )
 from app.services.lyrical_analysis import build_lyrical_essence, merge_lyrical_into_audience
 from app.services.spotify_client import (
-    fetch_artist_profile,
-    fetch_audio_features,
-    fetch_top_tracks,
+    SpotifyAPIError,
+    analyze_artist,
     resolve_artist_id,
     spotify_configured,
 )
@@ -115,8 +114,24 @@ def _platform_channels(brief: CampaignBrief) -> list[str]:
 
 
 def _apply_lyrical_enrichment(brief: CampaignBrief, analysis: MusicAnalysis) -> None:
+    from app.services.genius_client import enrich_tracks_with_genius, genius_configured
+
     tracks = analysis.top_tracks or []
+    if genius_configured():
+        tracks = enrich_tracks_with_genius(tracks, brief.artist_name or "")
+        analysis.top_tracks = tracks
     lyrical = build_lyrical_essence(brief, tracks)
+    if genius_configured() and any(t.get("genius") for t in tracks):
+        lyrical["genius_refs"] = [
+            {"title": t.get("name"), "url": (t.get("genius") or {}).get("url")}
+            for t in tracks
+            if t.get("genius")
+        ]
+        lyrical["note"] = (
+            "Themes inferred from brief + track titles; Genius links attached for lyrical review. "
+            "Set ANALYSIS_LLM_* for deeper synthesis."
+        )
+        lyrical["source"] = "brief_heuristic+genius" if lyrical.get("source") != "llm" else lyrical["source"]
     analysis.lyrical_analysis = lyrical
     analysis.audience_profile = merge_lyrical_into_audience(analysis.audience_profile or {}, lyrical)
     voice = lyrical.get("narrative_voice", "distinct")
@@ -216,28 +231,51 @@ def run_analysis(brief_id: int) -> MusicAnalysis:
         if artist_id:
             brief.spotify_artist_id = artist_id
 
+        used_external = False
         if artist_id and spotify_configured():
-            profile = fetch_artist_profile(artist_id)
-            tracks = fetch_top_tracks(artist_id)
-            track_ids = [t["id"] for t in tracks if t.get("id")]
-            features = fetch_audio_features(track_ids)
-            averages = _avg_features(features)
+            try:
+                spotify = analyze_artist(artist_id)
+                profile = spotify["profile"]
+                tracks = spotify["tracks"]
+                features = spotify["features"]
+                averages = spotify["averages"] or _avg_features(features)
 
-            if profile.get("genres") and not brief.genres:
-                from app.constants.marketer_taxonomy import normalize_genre_list
+                if profile.get("genres") and not brief.genres:
+                    from app.constants.marketer_taxonomy import normalize_genre_list
 
-                brief.genres = normalize_genre_list(profile["genres"][:5])
+                    brief.genres = normalize_genre_list(profile["genres"][:5])
 
-            audience = _infer_audience(profile, averages, brief)
-            summary = _sonic_summary_text(brief.artist_name, profile, averages, audience)
+                # Prefer Spotify follower count when artist left monthly listeners blank
+                if profile.get("followers") and not brief.spotify_monthly_listeners:
+                    brief.spotify_monthly_listeners = int(profile["followers"])
+                    brief.compute_maturity()
 
-            analysis.spotify_profile = profile
-            analysis.top_tracks = tracks
-            analysis.audio_features = {"averages": averages, "tracks": features}
-            analysis.audience_profile = audience
-            analysis.sonic_summary = summary
-            _apply_lyrical_enrichment(brief, analysis)
-        elif lastfm_configured():
+                audience = _infer_audience(profile, averages, brief)
+                summary = _sonic_summary_text(brief.artist_name, profile, averages, audience)
+                summary += " Profile data sourced from Spotify."
+                if spotify["feature_source"] == "genre_estimate":
+                    summary += " Sonic averages estimated from Spotify genres."
+
+                analysis.spotify_profile = profile
+                analysis.top_tracks = tracks
+                analysis.audio_features = {
+                    "averages": averages,
+                    "tracks": features,
+                    "source": spotify["feature_source"],
+                    "track_source": spotify["track_source"],
+                }
+                analysis.audience_profile = audience
+                analysis.sonic_summary = summary
+                _apply_lyrical_enrichment(brief, analysis)
+                if spotify["warnings"]:
+                    brief.analysis_error = " ".join(spotify["warnings"])
+                else:
+                    brief.analysis_error = None
+                used_external = True
+            except SpotifyAPIError as exc:
+                brief.analysis_error = f"Spotify lookup failed ({exc}) — trying fallback."
+
+        if not used_external and lastfm_configured():
             try:
                 lastfm = _lastfm_analysis(brief)
                 analysis.spotify_profile = lastfm.spotify_profile
@@ -246,19 +284,22 @@ def run_analysis(brief_id: int) -> MusicAnalysis:
                 analysis.lyrical_analysis = lastfm.lyrical_analysis
                 analysis.audience_profile = lastfm.audience_profile
                 analysis.sonic_summary = lastfm.sonic_summary
-                brief.analysis_error = None
+                if not brief.analysis_error:
+                    brief.analysis_error = None
+                used_external = True
             except Exception as exc:
-                brief.analysis_error = f"Last.fm lookup failed ({exc}) — using estimated profile."
-                heuristic = _heuristic_analysis(brief)
-                analysis.spotify_profile = heuristic.spotify_profile
-                analysis.top_tracks = heuristic.top_tracks
-                analysis.audio_features = heuristic.audio_features
-                analysis.lyrical_analysis = heuristic.lyrical_analysis
-                analysis.audience_profile = heuristic.audience_profile
-                analysis.sonic_summary = heuristic.sonic_summary
-        else:
+                brief.analysis_error = (
+                    (brief.analysis_error + " ") if brief.analysis_error else ""
+                ) + f"Last.fm lookup failed ({exc}) — using estimated profile."
+
+        if not used_external:
             if not artist_id:
                 brief.analysis_error = "Could not parse Spotify artist URL — using estimated profile."
+            elif not spotify_configured():
+                brief.analysis_error = (
+                    "Spotify credentials not configured — using estimated profile. "
+                    "Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to .env."
+                )
             heuristic = _heuristic_analysis(brief)
             analysis.spotify_profile = heuristic.spotify_profile
             analysis.top_tracks = heuristic.top_tracks

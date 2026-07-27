@@ -7,6 +7,14 @@
     {% if brief.spotify_artist_url %}
     <p style="margin:.35rem 0 0;"><a href="{{ brief.spotify_artist_url }}" target="_blank" rel="noopener">Spotify profile ↗</a></p>
     {% endif %}
+    {% if analysis and analysis.spotify_profile and analysis.spotify_profile.source == 'spotify' %}
+    <p style="margin:.45rem 0 0;">
+        <span class="badge">Spotify live</span>
+        {% if analysis.spotify_profile.followers %}<span class="badge">{{ "{:,}".format(analysis.spotify_profile.followers) }} followers</span>{% endif %}
+        {% if analysis.spotify_profile.popularity is not none %}<span class="badge">popularity {{ analysis.spotify_profile.popularity }}</span>{% endif %}
+        {% if analysis.audio_features and analysis.audio_features.source %}<span class="badge">{{ analysis.audio_features.source }}</span>{% endif %}
+    </p>
+    {% endif %}
 </div>
 
 {% if brief.analysis_error %}
@@ -78,6 +86,13 @@
     {% if analysis.lyrical_analysis.cultural_signals %}
     <p><strong>Cultural signals:</strong>
         {% for sig in analysis.lyrical_analysis.cultural_signals %}<span class="badge">{{ sig }}</span>{% endfor %}
+    </p>
+    {% endif %}
+    {% if analysis.lyrical_analysis.genius_refs %}
+    <p><strong>Genius references:</strong>
+        {% for ref in analysis.lyrical_analysis.genius_refs %}
+        {% if ref.url %}<a href="{{ ref.url }}" target="_blank" rel="noopener" style="margin-right:.5rem;">{{ ref.title or 'Song' }} ↗</a>{% endif %}
+        {% endfor %}
     </p>
     {% endif %}
     <p style="font-size:.85rem;color:var(--muted);">{{ analysis.lyrical_analysis.note or '' }}</p>

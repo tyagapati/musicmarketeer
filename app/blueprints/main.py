@@ -11,7 +11,16 @@ def index():
 
 @main_bp.route("/health")
 def health():
-    return jsonify({"status": "ok"})
+    payload = {"status": "ok"}
+    from flask import request
+
+    if request.args.get("spotify") == "1":
+        from app.services.spotify_client import spotify_configured, verify_spotify_credentials
+
+        payload["spotify_configured"] = spotify_configured()
+        if spotify_configured():
+            payload["spotify"] = verify_spotify_credentials()
+    return jsonify(payload)
 
 
 @main_bp.route("/terms")

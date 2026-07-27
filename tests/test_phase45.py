@@ -23,6 +23,20 @@ def test_build_lyrical_essence_from_brief():
     assert lyrical["hook_patterns"]
 
 
+def test_genius_enrichment_optional(app, brief_with_spotify, monkeypatch):
+    monkeypatch.delenv("SPOTIFY_CLIENT_ID", raising=False)
+    monkeypatch.delenv("LASTFM_API_KEY", raising=False)
+    monkeypatch.setenv("GENIUS_ACCESS_TOKEN", "test-token")
+
+    def fake_search(title, artist=""):
+        return {"id": 1, "title": title, "url": "https://genius.com/test", "primary_artist": artist}
+
+    monkeypatch.setattr("app.services.genius_client.search_song", fake_search)
+    with app.app_context():
+        analysis = run_analysis(brief_with_spotify.id)
+        assert analysis.lyrical_analysis.get("genius_refs")
+        assert analysis.lyrical_analysis["genius_refs"][0]["url"] == "https://genius.com/test"
+
 def test_analysis_includes_lyrical_essence(app, brief_with_spotify, monkeypatch):
     monkeypatch.delenv("SPOTIFY_CLIENT_ID", raising=False)
     monkeypatch.delenv("LASTFM_API_KEY", raising=False)

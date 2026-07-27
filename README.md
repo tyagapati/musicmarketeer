@@ -200,12 +200,13 @@ The matching engine scores marketers across 9 weighted dimensions (normalized to
 8. **Language** (`MATCH_WEIGHT_LANGUAGE`, default 5%)
 9. **Confidence** (`MATCH_WEIGHT_CONFIDENCE`, default 5%) — uses `confidence_score`
 
-Hire feedback and artist ratings provide additional ranking boosts over time.
+Hire feedback and artist ratings provide additional ranking boosts over time. Strategy-aware signals (`audience_fit`, `channel_fit`, `lyrical_themes`) also influence ranking when a campaign analysis exists.
 
 ## Artist actions
 
-- **Intro requests**: artists submit from marketer profile pages (`IntroRequest` stored for admin review).
-- **Service visit tracking**: `/search/marketer/<id>/go` redirects through affiliate/booking URL.
+- **Campaign builder**: `/artist/intake` → music analysis → marketing strategy → ranked matches.
+- **Intro requests**: artists submit from marketer profile pages (`IntroRequest` stored for admin review; marketer + admin notified when SMTP is configured).
+- **Campaign report**: printable summary at `/artist/campaign/<id>/report`.
 - **Match feedback**: artists can report hire outcomes on match results pages.
 
 ## Marketer onboarding
