@@ -93,6 +93,14 @@ def ensure_schema():
             "concierge_intros_remaining",
             "ALTER TABLE campaign_briefs ADD COLUMN concierge_intros_remaining INTEGER DEFAULT 0",
         )
+        for col, ddl in (
+            ("spotify_artist_url", "ALTER TABLE campaign_briefs ADD COLUMN spotify_artist_url VARCHAR(500)"),
+            ("spotify_artist_id", "ALTER TABLE campaign_briefs ADD COLUMN spotify_artist_id VARCHAR(64)"),
+            ("engine_stage", "ALTER TABLE campaign_briefs ADD COLUMN engine_stage VARCHAR(50) DEFAULT 'intake'"),
+            ("analysis_status", "ALTER TABLE campaign_briefs ADD COLUMN analysis_status VARCHAR(50) DEFAULT 'pending'"),
+            ("analysis_error", "ALTER TABLE campaign_briefs ADD COLUMN analysis_error TEXT"),
+        ):
+            _add_column_if_missing("campaign_briefs", col, ddl)
         db.session.commit()
 
     if "intro_requests" in inspector.get_table_names():
@@ -127,6 +135,6 @@ def ensure_schema():
         )
         db.session.commit()
 
-    if "verification_decisions" not in table_names or "marketer_packages" not in table_names:
+    if "verification_decisions" not in table_names or "marketer_packages" not in table_names or "music_analyses" not in table_names:
         db.create_all()
         db.session.commit()

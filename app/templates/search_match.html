@@ -1,163 +1,434 @@
 {% extends "base.html" %}
+
 {% block title %}Matches for {{ brief.artist_name }} – SoundMatch{% endblock %}
+
 {% block container_class %}container--wide{% endblock %}
+
 {% block extra_head %}
+
 <style>
+
   .match-shell{ max-width: 1240px; margin: 0 auto; }
+
   .match-hero{
+
     border: 1px solid rgba(255,255,255,.12);
+
     border-radius: 18px;
+
     padding: 1.15rem 1.25rem;
+
     background:
+
       radial-gradient(700px 220px at 10% 0%, rgba(34,211,238,.14), transparent 60%),
+
       radial-gradient(700px 220px at 90% 0%, rgba(167,139,250,.14), transparent 62%),
+
       linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+
     margin-bottom: 1rem;
+
   }
+
   .match-hero h1{ margin: 0 0 .35rem; }
+
   .match-hero p{ margin: 0; color: var(--muted); }
+
   .match-info-card{
+
     border: 1px solid rgba(34,211,238,.28);
+
     border-radius: 16px;
+
     padding: 1rem 1.1rem;
+
     margin-bottom: 1rem;
+
     background: rgba(34,211,238,.08);
+
   }
+
   .match-grid{
+
     display:grid;
+
     grid-template-columns: repeat(2, minmax(0,1fr));
+
     gap: .9rem;
+
   }
+
   .mm-card{
+
     border: 1px solid rgba(34,211,238,.20);
+
     border-radius: 16px;
+
     background:
+
       linear-gradient(160deg, rgba(34,211,238,.08), rgba(167,139,250,.08) 45%, rgba(11,16,34,.82)),
+
       linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+
     box-shadow: 0 18px 40px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.05);
+
     overflow:hidden;
+
     display:flex;
+
     flex-direction:column;
+
   }
-  .mm-card--locked{ opacity: .72; }
+
   .mm-head{
+
     display:flex;
+
     align-items:flex-start;
+
     justify-content:space-between;
+
     gap:.6rem;
+
     padding: .95rem .95rem .5rem;
+
   }
+
   .mm-name{ margin: 0; font-size: 1.02rem; line-height:1.25; color:#eff3ff; }
+
   .mm-name a{ color:inherit; text-decoration:none; }
+
   .mm-name a:hover{ text-decoration: underline; }
+
   .mm-score{
+
     flex-shrink:0;
+
     border: 1px solid rgba(255,255,255,.14);
+
     border-radius: 999px;
+
     padding: .23rem .58rem;
+
     font-size: .83rem;
+
     color:#DDF0FF;
+
     background: rgba(255,255,255,.04);
+
   }
+
   .mm-body{ padding: 0 .95rem .75rem; }
+
   .mm-bio{ margin: .45rem 0 .68rem; color: var(--muted); font-size:.92rem; line-height:1.55; }
+
   .mm-reasons{ margin: .45rem 0 .3rem; display:flex; flex-wrap:wrap; gap:.35rem; }
+
   .reason-pill{
+
     font-size:.76rem;
+
     border:1px solid rgba(255,255,255,.12);
+
     border-radius:999px;
+
     padding:.2rem .52rem;
+
     color:#dbe6ff;
+
     background: rgba(255,255,255,.04);
+
   }
+
   .mm-foot{
+
     margin-top:auto;
+
     padding:.82rem .95rem .95rem;
+
     border-top:1px solid rgba(255,255,255,.10);
+
     display:flex;
+
     align-items:center;
+
     justify-content:space-between;
+
     gap:.6rem;
+
     flex-wrap:wrap;
+
   }
+
   .mm-meta{ font-size:.8rem; color:var(--muted2); }
+
   .mm-actions{ display:flex; gap:.45rem; flex-wrap: wrap; }
-  .match-bottom-link{ margin-top:1rem; display:inline-block; }
-  @media (max-width: 980px){ .match-grid{ grid-template-columns: 1fr; } }
+
+  .feedback-card{
+
+    margin-top: 1rem;
+
+    border: 1px solid rgba(255,255,255,.12);
+
+    border-radius: 16px;
+
+    padding: 1rem 1.1rem;
+
+    background: rgba(255,255,255,.04);
+
+  }
+
+  .feedback-grid{
+
+    display:grid;
+
+    grid-template-columns: repeat(2, minmax(0,1fr));
+
+    gap: .75rem;
+
+    margin-top: .75rem;
+
+  }
+
+  .match-bottom-link{ margin-top:1rem; display:inline-block; margin-right: 1rem; }
+
+  @media (max-width: 980px){ .match-grid, .feedback-grid { grid-template-columns: 1fr; } }
+
 </style>
+
 {% endblock %}
+
 {% block content %}
+
 <div class="match-shell">
+
   <section class="match-hero">
-    <h1>Platform matches for {{ brief.artist_name }}</h1>
+
+    <h1>Matches for {{ brief.artist_name }}</h1>
+
     <p>Genres: {{ brief.genres | join(", ") }} · Budget: ${{ brief.budget_min }}–${{ brief.budget_max }} · Tier: {{ brief.maturity_tier }}</p>
+
   </section>
+
+
 
   <section class="match-info-card">
-    <strong>SoundMatch marketplace</strong>
+
+    <strong>Step 3 of 3 · Connect with marketers</strong>
+
     <p style="margin:.45rem 0 0;color:var(--muted);">
-      These are enrolled marketers on our platform with bookable packages. Preview your top {{ preview_limit }} matches, then book directly — no agencies, no off-platform redirects.
+
+      {% if strategy and strategy.recommended_channels %}
+
+      Prioritizing {% for ch in strategy.recommended_channels[:2] %}{{ ch.title }}{% if not loop.last %}, {% endif %}{% endfor %} based on your analysis.
+
+      {% else %}
+
+      Ranked marketers from our catalog — request a warm introduction to start the conversation.
+
+      {% endif %}
+
     </p>
+
+    {% if analysis and analysis.sonic_summary %}
+
+    <p style="margin:.5rem 0 0;font-size:.85rem;color:var(--muted2);">{{ analysis.sonic_summary[:220] }}{% if analysis.sonic_summary|length > 220 %}…{% endif %}</p>
+
+    {% endif %}
+
+    <p style="margin:.65rem 0 0;">
+
+      <a href="{{ url_for('artist.campaign_report', id=brief.id) }}" class="btn btn-secondary btn-sm">View full campaign report</a>
+
+    </p>
+
   </section>
 
+
+
   {% if results %}
-    <section class="match-grid" aria-label="Matched platform marketers">
+
+    <section class="match-grid" aria-label="Matched marketers">
+
       {% for r in results %}
-      {% set locked = loop.index > preview_limit %}
-      <article class="mm-card{% if locked %} mm-card--locked{% endif %}">
+
+      <article class="mm-card">
+
         <div class="mm-head">
+
           <div>
+
             <h2 class="mm-name">
-              {% if locked %}
-                Match #{{ loop.index }} (preview limit)
-              {% else %}
-                <a href="/search/marketer/{{ r.marketer.id }}?brief_id={{ brief.id }}">{{ r.marketer | marketer_brand }}</a>
-              {% endif %}
+
+              <a href="/search/marketer/{{ r.marketer.id }}?brief_id={{ brief.id }}">{{ r.marketer | marketer_brand }}</a>
+
             </h2>
+
           </div>
-          {% if not locked %}<span class="mm-score">{{ (r.match_score * 100) | int }}% match</span>{% endif %}
+
+          <span class="mm-score">{{ (r.match_score * 100) | int }}% match</span>
+
         </div>
+
         <div class="mm-body">
-          {% if not locked %}
+
           <p>
-            {% for genre in r.marketer.genres[:4] %}<span class="badge">{{ genre }}</span>{% endfor %}
+
+            <span class="badge">{{ r.marketer | provider_badge }}</span>
+
+            {% for genre in r.marketer.genres[:3] %}<span class="badge">{{ genre }}</span>{% endfor %}
+
           </p>
-          <p class="mm-bio">{{ r.marketer.bio[:140] if r.marketer.bio else 'Platform marketer on SoundMatch.' }}{% if r.marketer.bio and r.marketer.bio|length > 140 %}…{% endif %}</p>
+
+          <p class="mm-bio">{{ r.marketer.bio[:160] if r.marketer.bio else 'Music marketer on SoundMatch.' }}{% if r.marketer.bio and r.marketer.bio|length > 160 %}…{% endif %}</p>
+
           <div class="mm-reasons">
-            {% for reason in r.top_reasons[:3] %}
+
+            {% for reason in r.top_reasons[:4] %}
+
               <span class="reason-pill">✓ {{ reason }}</span>
+
             {% endfor %}
+
           </div>
-          {% else %}
-          <p class="mm-bio">View all matches on each marketer's profile to compare packages and book.</p>
-          {% endif %}
+
         </div>
+
         <div class="mm-foot">
-          {% if not locked %}
-          <span class="mm-meta">
-            {% if r.marketer.cheapest_package_cents %}from {{ format_price_cents(r.marketer.cheapest_package_cents) }}{% else %}packages available{% endif %}
-            · proof {{ r.marketer.proof_strength or 0 }}%
-          </span>
+
+          <span class="mm-meta">proof {{ r.marketer.proof_strength or 0 }}%</span>
+
           <div class="mm-actions">
-            <a href="/search/marketer/{{ r.marketer.id }}?brief_id={{ brief.id }}" class="btn btn-success btn-sm">View packages</a>
+
+            <a href="/search/marketer/{{ r.marketer.id }}?brief_id={{ brief.id }}" class="btn btn-success btn-sm">Request introduction</a>
+
           </div>
-          {% endif %}
+
         </div>
+
       </article>
+
       {% endfor %}
+
     </section>
+
   {% else %}
+
     <div class="card">
-      <p><strong>No platform marketers available yet.</strong></p>
+
+      <p><strong>No marketers in the catalog yet.</strong></p>
+
       <p style="color:var(--muted);margin-top:.5rem;">
-        We're onboarding independent marketers with bookable packages. Check back soon or
-        <a href="/marketer/apply">apply as a marketer</a>.
+
+        We're building our verified catalog of marketers and agencies.
+
+        <a href="/marketer/apply">Apply as a marketer</a>.
+
       </p>
-      {% if platform_count == 0 %}
-      <p style="font-size:.85rem;color:#6b7280;margin-top:.5rem;">Admin: approve marketer applications and add packages in their portal.</p>
-      {% endif %}
+
     </div>
+
   {% endif %}
-  <a href="/artist/intake" class="match-bottom-link">← New brief</a>
+
+
+
+  {% if results %}
+
+  <section class="feedback-card" aria-label="Match feedback">
+
+    <h2 style="margin:0;font-size:1rem;">How did it go?</h2>
+
+    <p style="margin:.4rem 0 0;color:var(--muted);font-size:.9rem;">
+
+      After you connect with a marketer, share feedback so we can improve future matches.
+
+    </p>
+
+    <form method="POST" action="{{ url_for('search.match', brief_id=brief.id) }}">
+
+      {% include '_csrf.html' %}
+
+      <div class="feedback-grid">
+
+        <div>
+
+          <label for="marketer_id">Marketer</label>
+
+          <select id="marketer_id" name="marketer_id" required>
+
+            <option value="">Select…</option>
+
+            {% for r in results %}
+
+            <option value="{{ r.marketer.id }}" {% if existing_feedback.get(r.marketer.id) %}selected{% endif %}>
+
+              {{ r.marketer.brand_name or r.marketer.name }}
+
+            </option>
+
+            {% endfor %}
+
+          </select>
+
+        </div>
+
+        <div>
+
+          <label for="rating">Rating (1–5)</label>
+
+          <select id="rating" name="rating">
+
+            <option value="">—</option>
+
+            {% for n in range(1, 6) %}
+
+            <option value="{{ n }}">{{ n }}</option>
+
+            {% endfor %}
+
+          </select>
+
+        </div>
+
+        <div>
+
+          <label>Did you work together?</label>
+
+          <div style="display:flex;gap:.75rem;margin-top:.35rem;">
+
+            <label><input type="radio" name="hired" value="yes"> Yes</label>
+
+            <label><input type="radio" name="hired" value="no" checked> Not yet</label>
+
+          </div>
+
+        </div>
+
+        <div>
+
+          <label for="notes">Notes (optional)</label>
+
+          <input type="text" id="notes" name="notes" placeholder="What worked or didn't?">
+
+        </div>
+
+      </div>
+
+      <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:.85rem;">Submit feedback</button>
+
+    </form>
+
+  </section>
+
+  {% endif %}
+
+
+
+  <a href="{{ url_for('artist.intake') }}" class="match-bottom-link">← New campaign</a>
+
+  <a href="{{ url_for('artist.campaign_report', id=brief.id) }}" class="match-bottom-link">Campaign report</a>
+
 </div>
+
 {% endblock %}
+

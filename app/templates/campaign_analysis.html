@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Music analysis – {{ brief.artist_name }}{% endblock %}
+{% block content %}
+<div class="card" style="margin-bottom:1rem;">
+    <p style="color:var(--muted);font-size:.85rem;margin:0 0 .5rem;">Step 1 of 3 · Understand your music</p>
+    <h1 style="margin:0;">{{ brief.artist_name }}</h1>
+    {% if brief.spotify_artist_url %}
+    <p style="margin:.35rem 0 0;"><a href="{{ brief.spotify_artist_url }}" target="_blank" rel="noopener">Spotify profile ↗</a></p>
+    {% endif %}
+</div>
+
+{% if brief.analysis_error %}
+<div class="card" style="margin-bottom:1rem;border-color:#f59e0b;">
+    <strong>Note:</strong> {{ brief.analysis_error }}
+</div>
+{% endif %}
+
+{% if analysis %}
+<div class="card" style="margin-bottom:1rem;">
+    <h2 style="margin-top:0;">Sonic essence</h2>
+    <p style="line-height:1.6;color:var(--muted);">{{ analysis.sonic_summary }}</p>
+</div>
+
+{% if analysis.audience_profile %}
+<div class="card" style="margin-bottom:1rem;">
+    <h2 style="margin-top:0;">Audience profile</h2>
+    <p><strong>Mood:</strong> {{ analysis.audience_profile.mood or '—' }}</p>
+    <p><strong>Tags:</strong>
+        {% for tag in analysis.audience_profile.tags or [] %}
+        <span class="badge">{{ tag }}</span>
+        {% endfor %}
+    </p>
+</div>
+{% endif %}
+
+{% if averages %}
+<div class="card" style="margin-bottom:1rem;">
+    <h2 style="margin-top:0;">Audio signature</h2>
+    {% for key, val in averages.items() %}
+    {% if key != 'tempo' %}
+    <p style="margin:.4rem 0;font-size:.9rem;">
+        <span style="display:inline-block;width:120px;text-transform:capitalize;">{{ key }}</span>
+        <span style="display:inline-block;width:{{ (val * 100)|int }}%;max-width:200px;height:8px;background:linear-gradient(90deg,#22d3ee,#a78bfa);border-radius:4px;vertical-align:middle;"></span>
+        <span style="margin-left:.5rem;color:var(--muted);">{{ (val * 100)|int }}%</span>
+    </p>
+    {% else %}
+    <p style="margin:.4rem 0;"><strong>Tempo:</strong> {{ val|int }} BPM</p>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if analysis.top_tracks %}
+<div class="card" style="margin-bottom:1rem;">
+    <h2 style="margin-top:0;">Top tracks</h2>
+    <table style="width:100%;font-size:.9rem;border-collapse:collapse;">
+        <thead><tr style="text-align:left;color:var(--muted);"><th>Track</th><th>Popularity</th></tr></thead>
+        <tbody>
+        {% for t in analysis.top_tracks[:5] %}
+        <tr><td style="padding:.35rem 0;">{{ t.name }}{% if t.album %} <span style="color:var(--muted);">· {{ t.album }}</span>{% endif %}</td><td>{{ t.popularity or '—' }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if analysis.lyrical_analysis %}
+<div class="card" style="margin-bottom:1rem;">
+    <h2 style="margin-top:0;">Lyrical essence</h2>
+    <p><strong>Themes:</strong>
+        {% for theme in analysis.lyrical_analysis.themes or [] %}<span class="badge">{{ theme }}</span>{% endfor %}
+    </p>
+    <p><strong>Narrative voice:</strong> {{ analysis.lyrical_analysis.narrative_voice or '—' }}</p>
+    <p><strong>Emotional arc:</strong> {{ analysis.lyrical_analysis.emotional_arc or '—' }}</p>
+    {% if analysis.lyrical_analysis.hook_patterns %}
+    <p><strong>Hook patterns:</strong> {{ analysis.lyrical_analysis.hook_patterns | join(', ') }}</p>
+    {% endif %}
+    {% if analysis.lyrical_analysis.cultural_signals %}
+    <p><strong>Cultural signals:</strong>
+        {% for sig in analysis.lyrical_analysis.cultural_signals %}<span class="badge">{{ sig }}</span>{% endfor %}
+    </p>
+    {% endif %}
+    <p style="font-size:.85rem;color:var(--muted);">{{ analysis.lyrical_analysis.note or '' }}</p>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card"><p>Analysis is still running or failed. <a href="{{ url_for('artist.campaign_analysis', id=brief.id) }}">Retry</a></p></div>
+{% endif %}
+
+<div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem;">
+    <a href="{{ url_for('artist.campaign_strategy', id=brief.id) }}" class="btn btn-primary">Continue to marketing strategy →</a>
+    <a href="{{ url_for('artist.intake') }}" class="btn btn-secondary">Start over</a>
+</div>
+{% endblock %}

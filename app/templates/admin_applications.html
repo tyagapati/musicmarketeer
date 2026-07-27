@@ -31,7 +31,7 @@
             {% include '_copy_button.html' %}
             {% endwith %}
             {% if m.email or a.email %}
-            {% set email_body = onboarding_email(m, include_connect=(stripe_configured and not payments_dev_bypass)) %}
+            {% set email_body = onboarding_email(m) %}
             {% with text=email_body, label="Copy onboarding email" %}
             {% include '_copy_button.html' %}
             {% endwith %}
@@ -42,9 +42,9 @@
     {% endif %}
 </div>
 {% else %}
-<div class="card"><p>No applications yet. Share <code>{{ marketer_apply_url }}</code> with marketers you want to recruit.</p></div>
+<div class="card"><p>No applications yet.</p></div>
 {% endfor %}
-<p><a href="/admin/">← Dashboard</a> · <a href="{{ url_for('admin.add_marketer') }}">Add marketer manually</a></p>
+<p><a href="/admin/">← Dashboard</a></p>
 <script>
 document.querySelectorAll(".copy-btn").forEach(function (btn) {
   btn.addEventListener("click", function () {

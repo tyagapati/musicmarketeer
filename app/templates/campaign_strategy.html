@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Marketing strategy – {{ brief.artist_name }}{% endblock %}
+{% block content %}
+<div class="card" style="margin-bottom:1rem;">
+    <p style="color:var(--muted);font-size:.85rem;margin:0 0 .5rem;">Step 2 of 3 · Marketing strategy</p>
+    <h1 style="margin:0;">What marketing fits your audience?</h1>
+</div>
+
+{% if strategy.audience_insights %}
+<div class="card" style="margin-bottom:1rem;">
+    <h2 style="margin-top:0;">Insights</h2>
+    <p style="line-height:1.6;color:var(--muted);">{{ strategy.audience_insights }}</p>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:1rem;">
+    <h2 style="margin-top:0;">Recommended channels</h2>
+    {% for ch in strategy.recommended_channels or [] %}
+    <div style="border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:.75rem;margin-bottom:.5rem;">
+        <strong>{{ ch.title }}</strong>
+        <span class="badge">{{ (ch.score * 100)|int }}% fit</span>
+        <p style="margin:.35rem 0 0;font-size:.88rem;color:var(--muted);">{{ ch.rationale }}</p>
+    </div>
+    {% endfor %}
+</div>
+
+<form method="POST" class="card">
+    {% include '_csrf.html' %}
+    <h2 style="margin-top:0;">Your priorities</h2>
+    <p style="font-size:.9rem;color:var(--muted);">Confirm which channels matter most — we'll use this to rank marketers.</p>
+    <div class="taxonomy-grid">
+        {% for service in canonical_services %}
+        <label class="chk-option">
+            <input type="checkbox" name="priorities" value="{{ service }}"
+                {% if service in (strategy.artist_priorities or []) or service in (brief.services_needed or []) %}checked{% endif %}>
+            {{ service | taxonomy_label }}
+        </label>
+        {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Find matching marketers →</button>
+</form>
+
+<p style="margin-top:1rem;"><a href="{{ url_for('artist.campaign_analysis', id=brief.id) }}">← Back to analysis</a></p>
+{% endblock %}

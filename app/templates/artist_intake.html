@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Campaign builder – SoundMatch{% endblock %}
-{% block body_class %}page-intake{% endblock %}
+{% block body_class %}page-intake{% if dev_sample_enabled %} has-dev-bar{% endif %}{% endblock %}
 {% block container_class %}container--intake{% endblock %}
 {% block extra_head %}
 <style>
@@ -15,6 +15,17 @@
         min-height: calc(100vh - 56px);
         display: flex;
         flex-direction: column;
+    }
+    .page-intake.has-dev-bar .container.container--intake{
+        padding-top: 3.25rem;
+    }
+    .ob-form{
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        position: relative;
+        z-index: 2;
     }
     .page-intake .intake-canvas{
         position: fixed;
@@ -54,6 +65,8 @@
         flex-shrink: 0;
         padding-top: 0.85rem;
         padding-bottom: 0.5rem;
+        position: relative;
+        z-index: 4;
     }
     .ob-chrome-row{
         display: flex;
@@ -380,9 +393,61 @@
         cursor: not-allowed;
         transform: none;
     }
+    .dev-sample-bar{
+        position: fixed;
+        top: 52px;
+        left: 0;
+        right: 0;
+        z-index: 200;
+        margin: 0;
+        padding: 0.55rem clamp(1rem, 4vw, 1.5rem);
+        border-bottom: 1px dashed rgba(250,204,21,.45);
+        background: rgba(17,14,8,.94);
+        backdrop-filter: blur(8px);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem 0.75rem;
+        font-size: 0.82rem;
+        color: #fde68a;
+        pointer-events: auto;
+    }
+    .dev-sample-bar strong{ color: #fef3c7; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+    .dev-sample-bar select,
+    .dev-sample-bar button{
+        font-family: inherit;
+        font-size: 0.82rem;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,.18);
+        background: rgba(7,10,19,.55);
+        color: #f8fafc;
+        padding: 0.35rem 0.55rem;
+        cursor: pointer;
+    }
+    .dev-sample-bar label{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        cursor: pointer;
+        color: #fde68a;
+    }
 </style>
 {% endblock %}
 {% block content %}
+{% if dev_sample_enabled %}
+<div class="dev-sample-bar" id="dev-sample-bar" aria-label="Developer sample data">
+    <strong>Dev</strong>
+    <select id="dev-sample-preset" title="Sample preset">
+        {% for key, preset in dev_sample_presets.items() %}
+        <option value="{{ key }}"{% if key == dev_sample_default %} selected{% endif %}>{{ preset.label }}</option>
+        {% endfor %}
+    </select>
+    <button type="button" id="dev-sample-fill">Fill form</button>
+    <label><input type="checkbox" id="dev-sample-autofill"> Auto-fill on load</label>
+    <span id="dev-sample-status" style="font-size:.78rem;color:#fcd34d;min-width:8rem;"></span>
+</div>
+{% endif %}
 <div class="intake-canvas" id="intake-canvas" aria-hidden="true" data-ob-canvas>
     <div class="intake-canvas__photo is-visible" id="intake-canvas-photo-a"></div>
     <div class="intake-canvas__photo" id="intake-canvas-photo-b"></div>
@@ -413,7 +478,7 @@
                     <div class="ob-slide-inner">
                         <span class="ob-kicker">SoundMatch</span>
                         <h2 class="ob-title">Let’s set up your campaign</h2>
-                        <p class="ob-sub">A few quick steps—like building a profile on BandLab. We’ll match you with marketers who fit your sound, budget, and goals.</p>
+                        <p class="ob-sub">We'll analyze your sound and audience, recommend marketing channels, then connect you with the right marketers.</p>
                     </div>
                 </section>
                 <!-- 1 identity -->
@@ -429,6 +494,10 @@
                             <div>
                                 <label for="email">Email</label>
                                 <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+                            </div>
+                            <div>
+                                <label for="spotify_artist_url">Spotify artist URL <span style="color:var(--bad);">*</span></label>
+                                <input type="url" id="spotify_artist_url" name="spotify_artist_url" required placeholder="https://open.spotify.com/artist/...">
                             </div>
                         </div>
                     </div>
@@ -461,7 +530,7 @@
                                 <input type="text" id="goals" name="goals" placeholder="streams, playlist adds, followers…">
                             </div>
                             <div>
-                                <span class="ob-label">Services needed <span style="color:var(--bad);">*</span></span>
+                                <span class="ob-label">Services needed</span>
                                 <div class="taxonomy-grid">
                                     {% for service in canonical_services %}
                                     <label class="chk-option ob-chk">
@@ -486,7 +555,7 @@
                                     <input type="number" id="budget_min" name="budget_min" min="0" placeholder="0">
                                 </div>
                                 <div>
-                                    <label for="budget_max">Max ($) <span style="color:var(--bad);">*</span></label>
+                                    <label for="budget_max">Max ($)</label>
                                     <input type="number" id="budget_max" name="budget_max" min="0" placeholder="0">
                                 </div>
                             </div>
@@ -552,7 +621,7 @@
                 <section class="ob-slide" data-step="8" data-bg="https://images.unsplash.com/photo-1571330735066-03aaa9429d89?auto=format&amp;fit=crop&amp;w=2400&amp;q=82">
                     <div class="ob-slide-inner">
                         <h2 class="ob-title">You’re all set</h2>
-                        <p class="ob-sub">Double-check your brief, then we’ll find matches.</p>
+                        <p class="ob-sub">We'll analyze your music, then show marketer matches.</p>
                         <div class="ob-review" id="ob-review" aria-live="polite"></div>
                     </div>
                 </section>
@@ -745,6 +814,7 @@
       "<dl>" +
       "<dt>Artist</dt><dd>" + escapeHtml(val("artist_name")) + "</dd>" +
       "<dt>Email</dt><dd>" + escapeHtml(val("email")) + "</dd>" +
+      "<dt>Spotify</dt><dd>" + escapeHtml(val("spotify_artist_url")) + "</dd>" +
       "<dt>Genres</dt><dd>" + escapeHtml(checkedValues("genres")) + "</dd>" +
       "<dt>Goals</dt><dd>" + escapeHtml(val("goals")) + "</dd>" +
       "<dt>Services</dt><dd>" + escapeHtml(checkedValues("services_needed")) + "</dd>" +
@@ -838,10 +908,86 @@
     updateTrackPosition(true);
   });
 
-  if (!track || !viewport) return;
-
-  preloadBackgrounds();
-  render(true);
+  if (track && viewport) {
+    preloadBackgrounds();
+    render(true);
+  }
 })();
+
+{% if dev_sample_enabled %}
+(function () {
+  var STORAGE_KEY = "soundmatch_dev_autofill";
+  var presets = {{ dev_sample_presets | tojson }};
+  var form = document.getElementById("intake-ob-form");
+  var presetSelect = document.getElementById("dev-sample-preset");
+  var fillBtn = document.getElementById("dev-sample-fill");
+  var autofillToggle = document.getElementById("dev-sample-autofill");
+  var statusEl = document.getElementById("dev-sample-status");
+  if (!form || !presetSelect || !fillBtn) return;
+
+  function setStatus(msg) {
+    if (statusEl) statusEl.textContent = msg || "";
+  }
+
+  function setChip(field, value) {
+    var chip = form.querySelector('.ob-chip[data-field="' + field + '"][data-value="' + value + '"]');
+    if (!chip) return;
+    var chips = chip.closest(".ob-chips");
+    if (!chips) return;
+    chips.querySelectorAll(".ob-chip").forEach(function (c) {
+      c.classList.toggle("is-selected", c === chip);
+    });
+    if (field === "timeline") {
+      document.getElementById("timeline_input").value = value;
+    } else if (field === "past") {
+      document.getElementById("past_input").value = value;
+    }
+  }
+
+  function fillSample(presetKey) {
+    var data = presets[presetKey];
+    if (!data) return;
+    [
+      "artist_name", "email", "spotify_artist_url", "goals",
+      "budget_min", "budget_max",
+      "spotify_monthly_listeners", "tiktok_followers", "ig_followers", "yt_subscribers"
+    ].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && data[id] != null) {
+        el.value = String(data[id]);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    form.querySelectorAll('input[name="genres"]').forEach(function (box) {
+      box.checked = (data.genres || []).indexOf(box.value) >= 0;
+    });
+    form.querySelectorAll('input[name="services_needed"]').forEach(function (box) {
+      box.checked = (data.services_needed || []).indexOf(box.value) >= 0;
+    });
+    if (data.timeline != null) setChip("timeline", data.timeline);
+    if (data.past_marketing_exp) setChip("past", data.past_marketing_exp);
+    setStatus("Loaded \"" + (data.label || presetKey) + "\"");
+  }
+
+  fillBtn.addEventListener("click", function () {
+    fillSample(presetSelect.value);
+  });
+
+  if (autofillToggle) {
+    try {
+      autofillToggle.checked = localStorage.getItem(STORAGE_KEY) === "1";
+    } catch (e) {
+      autofillToggle.checked = false;
+    }
+    autofillToggle.addEventListener("change", function () {
+      try {
+        localStorage.setItem(STORAGE_KEY, autofillToggle.checked ? "1" : "0");
+      } catch (e) { /* ignore */ }
+      if (autofillToggle.checked) fillSample(presetSelect.value);
+    });
+    if (autofillToggle.checked) fillSample(presetSelect.value);
+  }
+})();
+{% endif %}
 </script>
 {% endblock %}

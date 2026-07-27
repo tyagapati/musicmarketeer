@@ -1,25 +1,24 @@
-"""Matching engine: rank platform marketers by fit to a campaign brief."""
+"""Matching engine: rank catalog marketers by fit to a campaign brief."""
 import os
+import re
 
 from app import db
-from app.models import Marketer, MatchFeedback, MarketplaceOrder
-from app.services.marketplace import (
-    cheapest_package_for_brief,
-    marketers_with_active_packages,
-    packages_matching_brief,
-    platform_marketers_query,
-)
+from app.models import CampaignStrategy, Marketer, MatchFeedback, MusicAnalysis
+from app.services.catalog import catalog_marketers_query
 
 DEFAULT_WEIGHTS = {
-    "genre": 0.20,
+    "genre": 0.22,
     "service": 0.20,
-    "budget": 0.15,
-    "goal": 0.10,
-    "maturity": 0.10,
-    "proof": 0.10,
-    "timezone": 0.05,
-    "language": 0.05,
+    "budget": 0.10,
+    "goal": 0.08,
+    "maturity": 0.08,
+    "proof": 0.08,
+    "timezone": 0.02,
+    "language": 0.02,
     "confidence": 0.05,
+    "audience_fit": 0.08,
+    "channel_fit": 0.05,
+    "lyrical_themes": 0.02,
 }
 
 GOAL_SERVICE_MAP = {
@@ -45,6 +44,15 @@ GOAL_SERVICE_MAP = {
     "fanbase": ["social_media_strategy"],
 }
 
+CHANNEL_SERVICE_MAP = {
+    "tiktok": ["social_media_strategy", "ads"],
+    "social": ["social_media_strategy", "ads"],
+    "playlist": ["playlist_pitching", "release_campaigns"],
+    "streaming": ["playlist_pitching", "ads"],
+    "video": ["social_media_strategy", "ads", "release_campaigns"],
+    "press": ["pr"],
+}
+
 
 def _weights():
     weights = {}
@@ -59,9 +67,11 @@ def _weights():
     return {k: v / total for k, v in weights.items()}
 
 
+def _tokenize(text: str) -> set[str]:
+    return {t.lower() for t in re.findall(r"[a-zA-Z']+", text or "") if len(t) > 2}
+
+
 def _marketer_payload(m, *, brief=None):
-    cheapest = cheapest_package_for_brief(m.id, brief.services_needed if brief else []) if brief else None
-    packages = packages_matching_brief(m.id, brief.services_needed if brief else []) if brief else []
     return {
         "id": m.id,
         "name": m.name,
@@ -78,28 +88,33 @@ def _marketer_payload(m, *, brief=None):
         "proof_strength": m.proof_strength or 0,
         "confidence_score": m.confidence_score or 0,
         "evidence_summary": m.evidence_summary,
-        "provider_type": m.provider_type or "solo",
+        "provider_type": m.provider_type or "agency",
         "enrolled": bool(m.enrolled),
-        "cheapest_package_cents": cheapest.price_cents if cheapest else None,
-        "cheapest_package_id": cheapest.id if cheapest else None,
-        "package_count": len(packages),
     }
 
 
 def rank_marketers(brief, top_n=5):
-    """Rank enrolled platform marketers with active packages only."""
-    bookable_ids = marketers_with_active_packages()
-    marketers = platform_marketers_query().filter(Marketer.id.in_(bookable_ids or [-1])).all()
+    """Rank all approved catalog marketers."""
+    strategy = CampaignStrategy.query.filter_by(brief_id=brief.id).first()
+    analysis = MusicAnalysis.query.filter_by(brief_id=brief.id).first()
+    priority_services = set(strategy.artist_priorities or []) if strategy else set()
+    recommended = {c.get("service") for c in (strategy.recommended_channels or []) if c.get("service")} if strategy else set()
+
+    marketers = catalog_marketers_query().all()
     results = []
     for m in marketers:
-        score, reasons = _score(m, brief)
-        pkg = cheapest_package_for_brief(m.id, brief.services_needed or [])
+        score, reasons = _score(
+            m,
+            brief,
+            analysis=analysis,
+            priority_services=priority_services,
+            recommended_services=recommended,
+        )
         results.append(
             {
                 "marketer": _marketer_payload(m, brief=brief),
                 "match_score": round(score, 2),
                 "top_reasons": reasons[:5],
-                "featured_package_id": pkg.id if pkg else None,
             }
         )
     results.sort(key=lambda x: -x["match_score"])
@@ -118,34 +133,96 @@ def _expanded_goal_services(brief):
     return services
 
 
-def _score(marketer, brief):
+def _service_overlap(marketer, brief):
+    needed = set(brief.services_needed or [])
+    offered = set(marketer.services or [])
+    if not needed:
+        return bool(offered)
+    return bool(needed & offered)
+
+
+def _audience_tag_overlap(marketer: Marketer, analysis: MusicAnalysis | None) -> tuple[float, str | None]:
+    if not analysis or not analysis.audience_profile:
+        return 0.0, None
+    audience_tags = {_normalize_tag(t) for t in (analysis.audience_profile.get("tags") or [])}
+    marketer_tokens = _tokenize(marketer.bio or "")
+    marketer_tokens |= {_normalize_tag(g) for g in (marketer.genres or [])}
+    overlap = audience_tags & marketer_tokens
+    if overlap:
+        sample = next(iter(overlap)).replace("-", " ")
+        return min(0.5 + len(overlap) * 0.1, 1.0), f"Audience overlap ({sample})"
+    return 0.0, None
+
+
+def _lyrical_theme_overlap(marketer: Marketer, analysis: MusicAnalysis | None) -> tuple[float, str | None]:
+    if not analysis or not analysis.lyrical_analysis:
+        return 0.0, None
+    themes = {_normalize_tag(t) for t in (analysis.lyrical_analysis.get("themes") or [])}
+    bio_tokens = _tokenize(marketer.bio or "")
+    evidence_tokens = _tokenize(marketer.evidence_summary or "")
+    pool = bio_tokens | evidence_tokens
+    hits = [theme for theme in themes if any(tok in theme or theme in tok for tok in pool)]
+    if hits:
+        return min(0.4 + len(hits) * 0.15, 1.0), f"Lyrical theme fit ({hits[0].replace('-', ' ')})"
+    return 0.0, None
+
+
+def _channel_fit(marketer: Marketer, analysis: MusicAnalysis | None, recommended_services: set[str]) -> tuple[float, str | None]:
+    offered = set(marketer.services or [])
+    if recommended_services and offered & recommended_services:
+        return 1.0, "Recommended channel specialist"
+    if not analysis or not analysis.audience_profile:
+        return 0.0, None
+    channels = analysis.audience_profile.get("primary_channels") or []
+    mapped: set[str] = set()
+    for channel in channels:
+        mapped.update(CHANNEL_SERVICE_MAP.get(channel, []))
+    if mapped and offered & mapped:
+        return 0.85, "Platform channel alignment"
+    return 0.0, None
+
+
+def _normalize_tag(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", (value or "").lower()).strip("-")
+
+
+def _score(marketer, brief, *, analysis=None, priority_services=None, recommended_services=None):
     w = _weights()
     reasons = []
     score = 0.0
+    priority_services = priority_services or set()
+    recommended_services = recommended_services or set()
 
     if set(marketer.genres or []) & set(brief.genres or []):
         score += w["genre"]
         reasons.append("Genre fit")
 
-    matched_packages = packages_matching_brief(marketer.id, brief.services_needed or [])
-    if matched_packages:
+    if _service_overlap(marketer, brief):
         score += w["service"]
-        reasons.append("Bookable service match")
+        reasons.append("Service match")
+
+    marketer_services = set(marketer.services or [])
+    if priority_services and marketer_services & priority_services:
+        score += 0.08
+        reasons.append("Strategy priority match")
+    elif recommended_services and marketer_services & recommended_services:
+        score += 0.05
+        reasons.append("Channel fit from analysis")
 
     goal_services = _expanded_goal_services(brief)
-    if goal_services and any(p.service in goal_services for p in matched_packages):
+    if goal_services and set(marketer.services or []) & goal_services:
         score += w["goal"]
         reasons.append("Goal fit")
 
-    cheapest = matched_packages[0] if matched_packages else None
-    if cheapest and brief.budget_max:
-        pkg_dollars = cheapest.price_cents / 100
-        if pkg_dollars <= brief.budget_max:
+    if brief.budget_max and (marketer.price_min or marketer.price_max):
+        floor = marketer.price_min or marketer.price_max or 0
+        ceiling = marketer.price_max or marketer.price_min or floor
+        if ceiling <= brief.budget_max:
             score += w["budget"]
-            reasons.append("Package fits budget")
-        elif pkg_dollars <= brief.budget_max * 1.15:
+            reasons.append("Fits budget")
+        elif floor <= brief.budget_max * 1.15:
             score += w["budget"] * 0.5
-            reasons.append("Package near budget")
+            reasons.append("Near budget")
 
     if brief.maturity_tier in (marketer.preferred_maturity or []):
         score += w["maturity"]
@@ -177,32 +254,34 @@ def _score(marketer, brief):
     if confidence >= 60:
         reasons.append("High confidence")
 
-    completed_orders = MarketplaceOrder.query.filter_by(
-        marketer_id=marketer.id, status="completed"
-    ).count()
-    if completed_orders:
-        score += min(0.08, completed_orders * 0.02)
-        reasons.append("Completed platform orders")
+    audience_ratio, audience_reason = _audience_tag_overlap(marketer, analysis)
+    if audience_ratio:
+        score += w["audience_fit"] * audience_ratio
+        if audience_reason:
+            reasons.append(audience_reason)
+
+    channel_ratio, channel_reason = _channel_fit(marketer, analysis, recommended_services)
+    if channel_ratio:
+        score += w["channel_fit"] * channel_ratio
+        if channel_reason:
+            reasons.append(channel_reason)
+
+    lyrical_ratio, lyrical_reason = _lyrical_theme_overlap(marketer, analysis)
+    if lyrical_ratio:
+        score += w["lyrical_themes"] * lyrical_ratio
+        if lyrical_reason:
+            reasons.append(lyrical_reason)
 
     hire_count = MatchFeedback.query.filter_by(marketer_id=marketer.id, hired=True).count()
     if hire_count:
         score += min(0.04, hire_count * 0.01)
+        reasons.append("Past hire feedback")
 
     avg_rating = (
-        db.session.query(db.func.avg(MarketplaceOrder.rating))
-        .filter(
-            MarketplaceOrder.marketer_id == marketer.id,
-            MarketplaceOrder.rating.isnot(None),
-            MarketplaceOrder.status == "completed",
-        )
+        db.session.query(db.func.avg(MatchFeedback.rating))
+        .filter(MatchFeedback.marketer_id == marketer.id, MatchFeedback.rating.isnot(None))
         .scalar()
     )
-    if not avg_rating:
-        avg_rating = (
-            db.session.query(db.func.avg(MatchFeedback.rating))
-            .filter(MatchFeedback.marketer_id == marketer.id, MatchFeedback.rating.isnot(None))
-            .scalar()
-        )
     if avg_rating and avg_rating >= 4:
         score += 0.04
         reasons.append("Strong artist ratings")

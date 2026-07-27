@@ -9,8 +9,6 @@ from app.models import (
     IntroRequest,
     Marketer,
     MarketerApplication,
-    MarketerPackage,
-    MarketplaceOrder,
     VerificationDecision,
 )
 from app.constants.marketer_taxonomy import (
@@ -19,17 +17,13 @@ from app.constants.marketer_taxonomy import (
     normalize_genre_list,
     normalize_service_list,
 )
-from app.services.connect_onboarding import connect_configured
-from app.services.marketplace import marketplace_gmv_stats, platform_marketers_query
+from app.services.catalog import catalog_marketers_query
 from app.services.onboarding import (
-    active_package_counts,
     marketer_onboarding_status,
     marketer_portal_url,
-    onboarding_email_body,
+    provision_catalog_marketer,
     provision_from_application,
-    provision_platform_marketer,
 )
-from app.services.payments import payments_dev_bypass
 from app.services.verification_decision import would_auto_approve_if_enabled
 from app.services.admin_auth import is_admin_authenticated, require_admin, verify_admin_password
 from app.services.automation_settings import (
@@ -85,24 +79,18 @@ def index():
     pending = Marketer.query.filter_by(status="pending").count()
     approved = Marketer.query.filter_by(status="approved").count()
     apps_pending = MarketerApplication.query.filter_by(status="pending").count()
-    enrolled_platform = platform_marketers_query().count()
-    active_packages = MarketerPackage.query.filter_by(active=True).count()
-    recent_orders = MarketplaceOrder.query.order_by(MarketplaceOrder.created_at.desc()).limit(5).all()
-    pending_orders = MarketplaceOrder.query.filter(
-        MarketplaceOrder.status.in_(("paid", "in_progress"))
-    ).count()
-    gmv = marketplace_gmv_stats()
+    catalog_count = catalog_marketers_query().count()
+    pending_intros = IntroRequest.query.filter_by(status="pending").count()
+    recent_intros = IntroRequest.query.order_by(IntroRequest.created_at.desc()).limit(5).all()
     return render_template(
         "admin_index.html",
         pending=pending,
         approved=approved,
         apps_pending=apps_pending,
         automation_toggles=automation_toggle_states(),
-        enrolled_platform=enrolled_platform,
-        active_packages=active_packages,
-        recent_orders=recent_orders,
-        pending_orders=pending_orders,
-        gmv=gmv,
+        catalog_count=catalog_count,
+        pending_intros=pending_intros,
+        recent_intros=recent_intros,
     )
 
 
@@ -131,11 +119,7 @@ def marketers():
     }
     all_marketers = Marketer.query.order_by(Marketer.status).all()
     latest_decisions = _latest_verification_decisions(all_marketers)
-    pkg_counts = active_package_counts([m.id for m in all_marketers])
-    onboarding = {
-        m.id: marketer_onboarding_status(m, active_packages=pkg_counts.get(m.id, 0))
-        for m in all_marketers
-    }
+    onboarding = {m.id: marketer_onboarding_status(m) for m in all_marketers}
     return render_template(
         "admin_marketers.html",
         marketers=all_marketers,
@@ -143,8 +127,6 @@ def marketers():
         onboarding=onboarding,
         result=result,
         auto_approve_enabled=is_automation_enabled("auto_approve_marketers"),
-        stripe_configured=connect_configured(),
-        payments_dev_bypass=payments_dev_bypass(),
     )
 
 
@@ -182,33 +164,14 @@ def _latest_verification_decisions(marketers):
     return latest
 
 
-@admin_bp.route("/marketers/<int:id>/enroll", methods=["POST"])
+@admin_bp.route("/marketers/<int:id>/portal", methods=["POST"])
 @require_admin
-def toggle_enrolled(id):
+def issue_portal(id):
     m = Marketer.query.get_or_404(id)
-    m.provider_type = "solo"
-    m.enrolled = not bool(m.enrolled)
-    if m.enrolled and not m.portal_token:
+    if not m.portal_token:
         m.portal_token = secrets.token_urlsafe(24)
-    if m.enrolled and not MarketerPackage.query.filter_by(marketer_id=m.id, active=True).first():
-        service = (m.services or ["playlist_pitching"])[0]
-        price = max(49, m.price_min or 149)
-        db.session.add(
-            MarketerPackage(
-                marketer_id=m.id,
-                service=service,
-                title=f"{m.brand_name or m.name} — starter package",
-                description=m.bio or "Bookable package on SoundMatch.",
-                price_cents=price * 100,
-                delivery_days=14,
-                active=True,
-            )
-        )
-    db.session.commit()
-    flash(
-        f"{'Enrolled' if m.enrolled else 'Unenrolled'} {m.brand_name or m.name} as platform marketer.",
-        "success",
-    )
+        db.session.commit()
+    flash(f"Portal link: {marketer_portal_url(m)}", "success")
     return redirect(url_for("admin.marketers"))
 
 
@@ -347,14 +310,9 @@ def add_marketer():
         website = f.get("website", "").strip()
         email = f.get("email", "").strip()
         bio = f.get("bio", "").strip()
-        try:
-            price_dollars = max(1, int(f.get("price_dollars") or 149))
-        except (TypeError, ValueError):
-            price_dollars = 149
-        try:
-            delivery_days = max(1, int(f.get("delivery_days") or 14))
-        except (TypeError, ValueError):
-            delivery_days = 14
+        provider_type = f.get("provider_type", "solo").strip() or "solo"
+        if provider_type not in ("solo", "agency"):
+            provider_type = "solo"
         form = {
             "brand_name": brand_name,
             "website": website,
@@ -362,15 +320,14 @@ def add_marketer():
             "bio": bio,
             "services": services,
             "genres": genres,
-            "price_dollars": price_dollars,
-            "delivery_days": delivery_days,
+            "provider_type": provider_type,
         }
         if not brand_name or not website:
             flash("Brand name and website are required.", "error")
         elif not services:
             flash("Select at least one service.", "error")
         else:
-            marketer = provision_platform_marketer(
+            marketer = provision_catalog_marketer(
                 brand_name=brand_name,
                 website=website,
                 email=email,
@@ -378,8 +335,7 @@ def add_marketer():
                 services=services,
                 genres=genres,
                 source="admin_manual",
-                price_cents=price_dollars * 100,
-                delivery_days=delivery_days,
+                provider_type=provider_type,
             )
             db.session.commit()
             portal = marketer_portal_url(marketer)
@@ -406,8 +362,6 @@ def applications():
         "admin_applications.html",
         applications=apps,
         marketers_by_brand=marketers_by_brand,
-        stripe_configured=connect_configured(),
-        payments_dev_bypass=payments_dev_bypass(),
     )
 
 
@@ -419,7 +373,7 @@ def approve_application(id):
     app_row.status = "approved"
     db.session.commit()
     portal = marketer_portal_url(marketer)
-    flash(f"Approved {app_row.brand_name} with a starter package. Portal: {portal}", "success")
+    flash(f"Approved {app_row.brand_name}. Portal: {portal}", "success")
     return redirect(url_for("admin.applications"))
 
 
@@ -430,30 +384,6 @@ def reject_application(id):
     app_row.status = "rejected"
     db.session.commit()
     return redirect(url_for("admin.applications"))
-
-
-@admin_bp.route("/orders")
-@require_admin
-def orders():
-    rows = MarketplaceOrder.query.order_by(MarketplaceOrder.created_at.desc()).limit(100).all()
-    marketer_names = {
-        m.id: m.brand_name or m.name
-        for m in Marketer.query.filter(Marketer.id.in_([r.marketer_id for r in rows] or [0])).all()
-    }
-    return render_template("admin_orders.html", orders=rows, marketer_names=marketer_names)
-
-
-@admin_bp.route("/orders/<int:id>/status", methods=["POST"])
-@require_admin
-def update_order_status(id):
-    order = MarketplaceOrder.query.get_or_404(id)
-    status = request.form.get("status", "").strip()
-    allowed = ("pending_payment", "paid", "in_progress", "delivered", "completed", "cancelled")
-    if status in allowed:
-        order.status = status
-        db.session.commit()
-        flash(f"Order #{order.id} marked {status}.", "success")
-    return redirect(url_for("admin.orders"))
 
 
 @admin_bp.route("/intros")

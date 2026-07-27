@@ -2,30 +2,10 @@
 {% block title %}Marketer portal – {{ marketer | marketer_brand }}{% endblock %}
 {% block content %}
 <h1>{{ marketer | marketer_brand }}</h1>
-<p style="color:#6b7280;">Platform marketer portal · manage profile, packages, and orders</p>
-
-<div class="card" style="margin-bottom:1rem;">
-    <h2 style="margin-top:0;">Payouts (Stripe Connect)</h2>
-    {% if payments_dev_bypass %}
-    <p style="font-size:.9rem;color:var(--muted);">Dev mode: bookings work without Connect. In production, complete payout setup below.</p>
-    {% endif %}
-    {% if marketer.payouts_enabled %}
-    <p><span class="badge approved">Payouts enabled</span> — you can receive paid bookings.</p>
-    {% elif marketer.stripe_connect_account_id %}
-    <p><span class="badge pending">Setup in progress</span></p>
-    {% else %}
-    <p><span class="badge pending">Not connected</span> — required before artists can book you (production).</p>
-    {% endif %}
-    {% if connect_configured %}
-    <a href="{{ url_for('marketer.portal_connect', token=marketer.portal_token) }}" class="btn btn-success btn-sm" style="margin-top:.5rem;">
-        {% if marketer.payouts_enabled %}Update payout settings{% else %}Connect payouts{% endif %}
-    </a>
-    {% endif %}
-</div>
+<p style="color:#6b7280;">Profile portal · keep your listing accurate for artist matches</p>
 
 <form method="POST" class="card" style="margin-bottom:1rem;">
     {% include '_csrf.html' %}
-    <input type="hidden" name="action" value="profile">
     <h2 style="margin-top:0;">Profile</h2>
     <p><label>Contact email<br><input name="email" type="email" value="{{ marketer.email or '' }}" style="width:100%;"></label></p>
     <p><strong>Services</strong></p>
@@ -43,66 +23,6 @@
     <p><label>Bio<br><textarea name="bio" rows="4" style="width:100%;">{{ marketer.bio or '' }}</textarea></label></p>
     <button class="btn btn-primary" type="submit">Save profile</button>
 </form>
-
-<div class="card" style="margin-bottom:1rem;">
-    <h2 style="margin-top:0;">Your packages</h2>
-    <p style="font-size:.9rem;color:var(--muted);">Artists book these directly on SoundMatch. At least one active package is required to appear in match results.</p>
-    {% for pkg in packages %}
-    <div style="border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:.7rem;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap;">
-        <div>
-            <strong>{{ pkg.title }}</strong>
-            <span class="badge{% if pkg.active %} approved{% endif %}">{% if pkg.active %}active{% else %}inactive{% endif %}</span>
-            <br><span style="font-size:.85rem;color:var(--muted);">${{ (pkg.price_cents / 100) | int }} · {{ pkg.delivery_days }}d · {{ pkg.service | taxonomy_label }}</span>
-        </div>
-        <form method="POST">
-            {% include '_csrf.html' %}
-            <input type="hidden" name="action" value="toggle_package">
-            <input type="hidden" name="package_id" value="{{ pkg.id }}">
-            <button class="btn btn-sm btn-secondary" type="submit">{% if pkg.active %}Deactivate{% else %}Activate{% endif %}</button>
-        </form>
-    </div>
-    {% else %}
-    <p style="color:var(--muted);">No packages yet. Add one below.</p>
-    {% endfor %}
-
-    <form method="POST" style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.08);">
-        {% include '_csrf.html' %}
-        <input type="hidden" name="action" value="add_package">
-        <h3 style="margin:0 0 .75rem;font-size:1rem;">Add package</h3>
-        <p><label>Title<br><input name="title" required placeholder="Playlist pitching — 2 weeks" style="width:100%;"></label></p>
-        <p><label>Service<br>
-            <select name="service" required style="width:100%;">
-                {% for service in canonical_services %}
-                <option value="{{ service }}">{{ service | taxonomy_label }}</option>
-                {% endfor %}
-            </select>
-        </label></p>
-        <p><label>Price (USD)<br><input name="price_dollars" type="number" min="1" required placeholder="149" style="width:100%;"></label></p>
-        <p><label>Delivery (days)<br><input name="delivery_days" type="number" min="1" value="14" style="width:100%;"></label></p>
-        <p><label>Description<br><textarea name="description" rows="2" style="width:100%;" placeholder="What the artist gets…"></textarea></label></p>
-        <button class="btn btn-success btn-sm" type="submit">Add package</button>
-    </form>
-</div>
-
-{% if orders %}
-<div class="card">
-    <h2 style="margin-top:0;">Incoming orders</h2>
-    {% for order in orders %}
-    <div style="margin-bottom:.65rem;padding-bottom:.65rem;border-bottom:1px solid rgba(255,255,255,.06);">
-        <strong>#{{ order.id }}</strong> · {{ order.artist_name }} · {{ order.status }}
-        · ${{ (order.amount_cents / 100) | round(2) }}
-        {% if order.status in ('paid', 'in_progress') %}
-        <form method="POST" style="display:inline;margin-left:.5rem;">
-            {% include '_csrf.html' %}
-            <input type="hidden" name="action" value="deliver_order">
-            <input type="hidden" name="order_id" value="{{ order.id }}">
-            <button class="btn btn-sm btn-success" type="submit">Mark delivered</button>
-        </form>
-        {% endif %}
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
 
 <p style="margin-top:1rem;font-size:0.85rem;color:#6b7280;">Public profile: <a href="{{ url_for('search.marketer_profile', id=marketer.id) }}">view on SoundMatch</a></p>
 {% endblock %}

@@ -5,11 +5,7 @@ import secrets
 
 from flask import abort, current_app, request, session
 
-EXEMPT_ENDPOINTS = frozenset(
-    {
-        "search.stripe_webhook",
-    }
-)
+EXEMPT_ENDPOINTS = frozenset()
 
 
 def get_csrf_token() -> str:

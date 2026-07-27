@@ -52,8 +52,11 @@ def notify_intro_request(intro, marketer):
         f"Artist: {intro.artist_name}\n"
         f"Artist email: {intro.email}\n"
         f"Marketer: {marketer.brand_name or marketer.name}\n"
-        f"Message:\n{intro.message or '(none)'}\n"
     )
+    if intro.brief_id:
+        body += f"Campaign report: {_report_url(intro.brief_id)}\n"
+        body += f"Match page: {_match_url(intro.brief_id)}\n"
+    body += f"Message:\n{intro.message or '(none)'}\n"
     recipients = []
     if intro.intro_type == "self_serve" and marketer.email:
         recipients.append(marketer.email)
@@ -71,139 +74,47 @@ def _match_url(brief_id: int) -> str:
     return f"{_app_base()}/search/match/{brief_id}"
 
 
-def _order_url(order_id: int) -> str:
-    return f"{_app_base()}/search/orders/{order_id}"
+def _report_url(brief_id: int) -> str:
+    return f"{_app_base()}/artist/campaign/{brief_id}/report"
 
 
 def notify_match_ready(brief):
-    """Email artist a link to their match report after intake."""
+    """Email artist a link to their campaign report after intake."""
     if not brief.email:
         return False
+    report_url = _report_url(brief.id)
     match_url = _match_url(brief.id)
-    subject = "Your SoundMatch matches are ready"
+    subject = "Your SoundMatch campaign report is ready"
     body = (
         f"Hi {brief.artist_name},\n\n"
-        f"We ranked marketers for your campaign. Preview your top matches here:\n"
+        f"Your music analysis, marketing strategy, and top marketer matches are ready:\n"
+        f"{report_url}\n\n"
+        f"Request introductions to marketers here:\n"
         f"{match_url}\n\n"
         f"— SoundMatch"
     )
     return send_email(subject, body, [brief.email])
 
 
-def notify_payment_confirmation(brief):
-    """Email artist after successful payment."""
-    if not brief.email:
-        return False
-    match_url = _match_url(brief.id)
-    subject = "Your SoundMatch premium match report is ready"
-    body = (
-        f"Hi {brief.artist_name},\n\n"
-        f"Thanks for your purchase. Your full match report and concierge intro credit are unlocked:\n"
-        f"{match_url}\n\n"
-        f"— SoundMatch"
-    )
-    return send_email(subject, body, [brief.email])
-
-
-def notify_order_paid(order):
-    """Email artist + marketer when a marketplace order is paid."""
-    from app.models import Marketer, MarketerPackage
-
-    marketer = Marketer.query.get(order.marketer_id)
-    package = MarketerPackage.query.get(order.package_id)
-    pkg_title = package.title if package else "package"
-    marketer_name = (marketer.brand_name or marketer.name) if marketer else "your marketer"
-    order_url = _order_url(order.id)
-
-    if order.artist_email:
-        send_email(
-            f"Booking confirmed — {pkg_title}",
-            (
-                f"Hi {order.artist_name},\n\n"
-                f"Your booking with {marketer_name} is confirmed.\n"
-                f"Package: {pkg_title}\n"
-                f"Track your order: {order_url}\n\n"
-                f"— SoundMatch"
-            ),
-            [order.artist_email],
-        )
-
-    recipients = []
-    if marketer and marketer.email:
-        recipients.append(marketer.email)
-    admin_to = _smtp_settings()["admin_to"]
-    if admin_to:
-        recipients.append(admin_to)
-    if recipients:
-        send_email(
-            f"New SoundMatch booking from {order.artist_name}",
-            (
-                f"Artist: {order.artist_name} ({order.artist_email})\n"
-                f"Package: {pkg_title}\n"
-                f"Order: #{order.id}\n"
-                f"Amount: ${(order.amount_cents or 0) / 100:.2f}\n\n"
-                f"Mark delivered in your marketer portal when work is done.\n"
-            ),
-            recipients,
-        )
-    return True
-
-
-def notify_order_delivered(order):
-    """Email artist when marketer marks order delivered."""
-    if not order.artist_email:
-        return False
-    send_email(
-        f"Your marketer delivered order #{order.id}",
-        (
-            f"Hi {order.artist_name},\n\n"
-            f"Your SoundMatch booking was marked delivered. Review and confirm completion:\n"
-            f"{_order_url(order.id)}\n\n"
-            f"— SoundMatch"
-        ),
-        [order.artist_email],
-    )
-    return True
-
-
-def notify_order_completed(order):
-    """Email marketer when artist confirms order complete."""
-    from app.models import Marketer
-
-    marketer = Marketer.query.get(order.marketer_id)
-    if not marketer or not marketer.email:
-        return False
-    send_email(
-        f"Order #{order.id} marked complete",
-        (
-            f"Hi {marketer.brand_name or marketer.name},\n\n"
-            f"The artist confirmed order #{order.id} is complete.\n"
-            f"Payout will process per your Stripe Connect settings.\n\n"
-            f"— SoundMatch"
-        ),
-        [marketer.email],
-    )
-    return True
-
-
-def notify_concierge_intro(intro, marketer, brief):
-    """Alert admin to send a concierge intro on the artist's behalf."""
-    admin_to = _smtp_settings()["admin_to"]
-    if not admin_to:
+def notify_match_feedback(feedback, brief):
+    """Log artist outcome feedback for ranking improvements."""
+    cfg = _smtp_settings()
+    if not cfg["admin_to"]:
         logger.info(
-            "Concierge intro queued (admin email unset): artist=%s marketer=%s brief=%s",
-            intro.artist_name,
-            marketer.brand_name or marketer.name,
-            brief.id if brief else None,
+            "Match feedback brief=%s marketer=%s hired=%s rating=%s",
+            feedback.brief_id,
+            feedback.marketer_id,
+            feedback.hired,
+            feedback.rating,
         )
-        return True
-    subject = f"[Action needed] Concierge intro: {intro.artist_name} → {marketer.brand_name or marketer.name}"
+        return False
+    subject = f"SoundMatch match feedback — {brief.artist_name}"
     body = (
-        f"Artist: {intro.artist_name} ({intro.email})\n"
-        f"Marketer: {marketer.brand_name or marketer.name}\n"
-        f"Brief ID: {brief.id if brief else 'n/a'}\n"
-        f"Marketer email: {marketer.email or 'unknown'}\n"
-        f"Message:\n{intro.message or '(none)'}\n\n"
-        f"Send the warm intro from SoundMatch and mark status sent in admin.\n"
+        f"Artist: {brief.artist_name}\n"
+        f"Brief: #{brief.id}\n"
+        f"Marketer ID: {feedback.marketer_id}\n"
+        f"Hired: {feedback.hired}\n"
+        f"Rating: {feedback.rating or 'n/a'}\n"
+        f"Notes: {feedback.notes or '(none)'}\n"
     )
-    return send_email(subject, body, [admin_to])
+    return send_email(subject, body, [cfg["admin_to"]])

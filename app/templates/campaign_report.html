@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Campaign report – {{ brief.artist_name }}{% endblock %}
+{% block extra_head %}
+<style>
+  .report-shell{ max-width: 900px; margin: 0 auto; }
+  .report-header{
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 16px;
+    padding: 1.2rem 1.3rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+  }
+  .report-section{
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    margin-bottom: .85rem;
+    background: rgba(255,255,255,.03);
+  }
+  .report-section h2{ margin-top: 0; font-size: 1.05rem; }
+  .report-meta{ color: var(--muted); font-size: .9rem; margin: .35rem 0 0; }
+  .report-actions{ display:flex; gap:.6rem; flex-wrap:wrap; margin-top: 1rem; }
+  @media print {
+    .no-print { display: none !important; }
+    .report-section { break-inside: avoid; }
+    body { background: #fff; color: #111; }
+    .report-section, .report-header { border-color: #ddd; background: #fff; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="report-shell">
+  <div class="report-header">
+    <p style="margin:0 0 .4rem;color:var(--muted);font-size:.85rem;">SoundMatch campaign report</p>
+    <h1 style="margin:0;">{{ brief.artist_name }}</h1>
+    <p class="report-meta">
+      Genres: {{ brief.genres | join(", ") or "—" }} ·
+      Budget: ${{ brief.budget_min }}–${{ brief.budget_max }} ·
+      Maturity: {{ brief.maturity_tier }}
+    </p>
+    {% if brief.spotify_artist_url %}
+    <p class="report-meta"><a href="{{ brief.spotify_artist_url }}" target="_blank" rel="noopener">Artist profile ↗</a></p>
+    {% endif %}
+  </div>
+
+  {% if analysis %}
+  <section class="report-section">
+    <h2>1 · Music analysis</h2>
+    <p style="line-height:1.6;color:var(--muted);">{{ analysis.sonic_summary }}</p>
+    {% if analysis.audience_profile %}
+    <p><strong>Mood:</strong> {{ analysis.audience_profile.mood or '—' }}</p>
+    <p><strong>Audience signals:</strong>
+      {% for tag in analysis.audience_profile.tags or [] %}<span class="badge">{{ tag }}</span>{% endfor %}
+    </p>
+    {% endif %}
+    {% if analysis.lyrical_analysis %}
+    <p><strong>Lyrical essence:</strong>
+      {% for theme in analysis.lyrical_analysis.themes or [] %}<span class="badge">{{ theme }}</span>{% endfor %}
+    </p>
+    <p style="font-size:.88rem;color:var(--muted);">
+      Voice: {{ analysis.lyrical_analysis.narrative_voice or '—' }} ·
+      Arc: {{ analysis.lyrical_analysis.emotional_arc or '—' }}
+    </p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if strategy %}
+  <section class="report-section">
+    <h2>2 · Marketing strategy</h2>
+    <p style="color:var(--muted);line-height:1.55;">{{ strategy.audience_insights }}</p>
+    <ol style="margin:.5rem 0 0;padding-left:1.2rem;color:var(--muted);">
+      {% for action in strategy.priority_actions or [] %}
+      <li style="margin-bottom:.35rem;"><strong>{{ action.action }}</strong> — {{ action.why }}</li>
+      {% endfor %}
+    </ol>
+    <p style="margin-top:.75rem;"><strong>Recommended channels</strong></p>
+    <ul style="margin:.35rem 0 0;color:var(--muted);">
+      {% for ch in strategy.recommended_channels[:5] %}
+      <li>{{ ch.title }} ({{ (ch.score * 100) | int }}% fit) — {{ ch.rationale }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section class="report-section">
+    <h2>3 · Top marketer matches</h2>
+    {% if results %}
+    <ol style="margin:0;padding-left:1.2rem;">
+      {% for r in results %}
+      <li style="margin-bottom:.55rem;">
+        <strong>{{ r.marketer.brand_name or r.marketer.name }}</strong>
+        — {{ (r.match_score * 100) | int }}% match
+        {% if r.top_reasons %}<span style="color:var(--muted);">({{ r.top_reasons[:2] | join(', ') }})</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p style="color:var(--muted);">No marketers matched yet.</p>
+    {% endif %}
+  </section>
+
+  <div class="report-actions no-print">
+    <button type="button" class="btn btn-secondary" onclick="window.print()">Print / save PDF</button>
+    <a href="{{ url_for('search.match', brief_id=brief.id) }}" class="btn btn-primary">Request introductions →</a>
+    <a href="{{ url_for('artist.campaign_analysis', id=brief.id) }}" class="btn btn-secondary">Back to wizard</a>
+  </div>
+</div>
+{% endblock %}

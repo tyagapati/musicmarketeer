@@ -138,6 +138,11 @@ class CampaignBrief(db.Model):
     timeline = db.Column(db.String(100))
     past_marketing_exp = db.Column(db.String(100))
     maturity_tier = db.Column(db.String(50))
+    spotify_artist_url = db.Column(db.String(500))
+    spotify_artist_id = db.Column(db.String(64))
+    engine_stage = db.Column(db.String(50), default="intake")
+    analysis_status = db.Column(db.String(50), default="pending")
+    analysis_error = db.Column(db.Text)
     payment_status = db.Column(db.String(50), default="unpaid")
     paid_at = db.Column(db.DateTime)
     stripe_checkout_session_id = db.Column(db.String(255))
@@ -156,6 +161,37 @@ class CampaignBrief(db.Model):
             self.maturity_tier = "mid"
         else:
             self.maturity_tier = "advanced"
+
+
+class MusicAnalysis(db.Model):
+    __tablename__ = "music_analyses"
+    id = db.Column(db.Integer, primary_key=True)
+    brief_id = db.Column(db.Integer, db.ForeignKey("campaign_briefs.id"), nullable=False, unique=True)
+    spotify_profile = db.Column(JsonDict, default=dict)
+    top_tracks = db.Column(JsonList, default=list)
+    audio_features = db.Column(JsonDict, default=dict)
+    lyrical_analysis = db.Column(JsonDict, default=dict)
+    sonic_summary = db.Column(db.Text)
+    audience_profile = db.Column(JsonDict, default=dict)
+    raw_llm_output = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    brief = db.relationship("CampaignBrief", backref=db.backref("music_analysis", uselist=False))
+
+
+class CampaignStrategy(db.Model):
+    __tablename__ = "campaign_strategies"
+    id = db.Column(db.Integer, primary_key=True)
+    brief_id = db.Column(db.Integer, db.ForeignKey("campaign_briefs.id"), nullable=False, unique=True)
+    recommended_channels = db.Column(JsonList, default=list)
+    audience_insights = db.Column(db.Text)
+    priority_actions = db.Column(JsonList, default=list)
+    artist_priorities = db.Column(JsonList, default=list)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    brief = db.relationship("CampaignBrief", backref=db.backref("campaign_strategy", uselist=False))
 
 
 class IntroRequest(db.Model):
