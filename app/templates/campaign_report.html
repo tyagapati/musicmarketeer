@@ -29,6 +29,8 @@
 </style>
 {% endblock %}
 {% block content %}
+{% set audio_source = (analysis.audio_features.source if analysis and analysis.audio_features else 'none') %}
+{% set measured_audio = audio_source == 'spotify' %}
 <div class="report-shell">
   <div class="report-header">
     <p style="margin:0 0 .4rem;color:var(--muted);font-size:.85rem;">SoundMatch campaign report</p>
@@ -36,7 +38,7 @@
     <p class="report-meta">
       Genres: {{ brief.genres | join(", ") or "—" }} ·
       Budget: ${{ brief.budget_min }}–${{ brief.budget_max }} ·
-      Maturity: {{ brief.maturity_tier }}
+      Reach stage: {{ brief.maturity_tier or "—" }}
     </p>
     {% if brief.spotify_artist_url %}
     <p class="report-meta"><a href="{{ brief.spotify_artist_url }}" target="_blank" rel="noopener">Artist profile ↗</a></p>
@@ -45,22 +47,27 @@
 
   {% if analysis %}
   <section class="report-section">
-    <h2>1 · Music analysis</h2>
+    <h2>1 · What we know</h2>
     <p style="line-height:1.6;color:var(--muted);">{{ analysis.sonic_summary }}</p>
     {% if analysis.audience_profile %}
-    <p><strong>Mood:</strong> {{ analysis.audience_profile.mood or '—' }}</p>
-    <p><strong>Audience signals:</strong>
+    {% if analysis.audience_profile.mood and measured_audio %}
+    <p><strong>Measured mood:</strong> {{ analysis.audience_profile.mood }}</p>
+    {% endif %}
+    <p><strong>Evidence labels:</strong>
       {% for tag in analysis.audience_profile.tags or [] %}<span class="badge">{{ tag }}</span>{% endfor %}
     </p>
     {% endif %}
     {% if analysis.lyrical_analysis %}
-    <p><strong>Lyrical essence:</strong>
-      {% for theme in analysis.lyrical_analysis.themes or [] %}<span class="badge">{{ theme }}</span>{% endfor %}
+    {% if analysis.lyrical_analysis.title_themes or analysis.lyrical_analysis.themes %}
+    <p><strong>Title-word cues:</strong>
+      {% for theme in analysis.lyrical_analysis.title_themes or analysis.lyrical_analysis.themes %}<span class="badge">{{ theme }}</span>{% endfor %}
     </p>
+    {% endif %}
+    {% if analysis.lyrical_analysis.goal_priorities %}
     <p style="font-size:.88rem;color:var(--muted);">
-      Voice: {{ analysis.lyrical_analysis.narrative_voice or '—' }} ·
-      Arc: {{ analysis.lyrical_analysis.emotional_arc or '—' }}
+      Goals: {{ analysis.lyrical_analysis.goal_priorities | join(', ') }}
     </p>
+    {% endif %}
     {% endif %}
   </section>
   {% endif %}
@@ -77,7 +84,7 @@
     <p style="margin-top:.75rem;"><strong>Recommended channels</strong></p>
     <ul style="margin:.35rem 0 0;color:var(--muted);">
       {% for ch in strategy.recommended_channels[:5] %}
-      <li>{{ ch.title }} ({{ (ch.score * 100) | int }}% fit) — {{ ch.rationale }}</li>
+      <li>{{ ch.title }} ({{ (ch.score * 100) | int }}% evidence fit) — {{ ch.rationale }}</li>
       {% endfor %}
     </ul>
   </section>

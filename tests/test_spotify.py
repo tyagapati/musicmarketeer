@@ -79,6 +79,10 @@ def test_run_analysis_spotify_path(app, brief_with_spotify, monkeypatch):
         analysis = run_analysis(bid)
         assert analysis.spotify_profile["source"] == "spotify"
         assert "Spotify" in (analysis.sonic_summary or "")
+        # Genre estimates must not be shown as measured audio
+        assert analysis.audio_features["averages"] == {}
+        assert analysis.audio_features["source"] == "unavailable"
+        assert analysis.audience_profile.get("mood") is None
         brief = db.session.get(CampaignBrief, bid)
         assert brief.analysis_status == "complete"
         assert brief.spotify_monthly_listeners == 1500
