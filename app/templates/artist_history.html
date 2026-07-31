@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}My campaigns – SoundMatch{% endblock %}
+{% block content %}
+<h1>My campaigns</h1>
+<p style="color:var(--muted);max-width:52ch;">
+  Enter the email you used on intake to see past campaigns. No password — keep your campaign links handy too.
+</p>
+
+<form method="POST" class="card" style="margin-bottom:1rem;max-width:420px;">
+  {% include '_csrf.html' %}
+  <label for="email">Email</label>
+  <input type="email" id="email" name="email" required value="{{ email or '' }}" placeholder="you@example.com" style="width:100%;margin:.35rem 0 .75rem;">
+  <button type="submit" class="btn btn-primary">Find my campaigns</button>
+</form>
+
+{% if briefs %}
+<p style="color:var(--muted);font-size:.9rem;">{{ briefs|length }} campaign{{ 's' if briefs|length != 1 else '' }} for {{ email }}</p>
+{% for b in briefs %}
+<div class="card" style="margin-bottom:.75rem;">
+  <strong>{{ b.artist_name }}</strong>
+  <span class="badge">{{ b.engine_stage or 'intake' }}</span>
+  <span class="badge">{{ b.maturity_tier or '—' }}</span>
+  <p style="margin:.4rem 0;color:var(--muted);font-size:.9rem;">
+    {{ (b.genres or []) | join(", ") or "No genres" }}
+    · Budget ${{ b.budget_min or 0 }}–{{ b.budget_max or 0 }}
+    {% if b.preferred_provider_type and b.preferred_provider_type != 'either' %}
+    · Prefers {{ b.preferred_provider_type }}
+    {% endif %}
+  </p>
+  <div style="display:flex;gap:.45rem;flex-wrap:wrap;">
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('artist.campaign_analysis', id=b.id) }}">Analysis</a>
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('artist.campaign_strategy', id=b.id) }}">Strategy</a>
+    <a class="btn btn-sm btn-success" href="{{ url_for('search.match', brief_id=b.id) }}">Matches</a>
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('artist.campaign_report', id=b.id) }}">Report</a>
+  </div>
+</div>
+{% endfor %}
+{% elif email %}
+<div class="card"><p>No campaigns yet. <a href="{{ url_for('artist.intake') }}">Start a campaign</a>.</p></div>
+{% endif %}
+
+<p style="margin-top:1rem;"><a href="{{ url_for('artist.intake') }}">← New campaign</a></p>
+{% endblock %}

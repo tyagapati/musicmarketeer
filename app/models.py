@@ -138,6 +138,7 @@ class CampaignBrief(db.Model):
     timeline = db.Column(db.String(100))
     past_marketing_exp = db.Column(db.String(100))
     maturity_tier = db.Column(db.String(50))
+    preferred_provider_type = db.Column(db.String(20), default="either")  # solo | agency | either
     spotify_artist_url = db.Column(db.String(500))
     spotify_artist_id = db.Column(db.String(64))
     engine_stage = db.Column(db.String(50), default="intake")
@@ -147,6 +148,7 @@ class CampaignBrief(db.Model):
     paid_at = db.Column(db.DateTime)
     stripe_checkout_session_id = db.Column(db.String(255))
     concierge_intros_remaining = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def compute_maturity(self):
         total = (

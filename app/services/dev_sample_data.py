@@ -20,6 +20,7 @@ SAMPLE_PRESETS: dict[str, dict] = {
         "yt_subscribers": 350,
         "timeline": "1_month",
         "past_marketing_exp": "diy",
+        "preferred_provider_type": "solo",
     },
     "hiphop_streams": {
         "label": "Hip-hop · Streams push",
@@ -37,6 +38,7 @@ SAMPLE_PRESETS: dict[str, dict] = {
         "yt_subscribers": 900,
         "timeline": "asap",
         "past_marketing_exp": "hired_before",
+        "preferred_provider_type": "either",
     },
     "pop_release": {
         "label": "Pop · Release campaign",
@@ -54,6 +56,7 @@ SAMPLE_PRESETS: dict[str, dict] = {
         "yt_subscribers": 3200,
         "timeline": "3_months",
         "past_marketing_exp": "agency",
+        "preferred_provider_type": "agency",
     },
 }
 

@@ -61,6 +61,10 @@ def intake():
         if budget_max <= 0:
             budget_max = 500
 
+        preferred = (f.get("preferred_provider_type") or "either").strip().lower()
+        if preferred not in ("solo", "agency", "either"):
+            preferred = "either"
+
         brief = CampaignBrief(
             artist_name=f.get("artist_name", "").strip(),
             email=f.get("email", "").strip(),
@@ -71,6 +75,7 @@ def intake():
             services_needed=services_needed,
             budget_min=_safe_int(f.get("budget_min")),
             budget_max=budget_max,
+            preferred_provider_type=preferred,
             spotify_monthly_listeners=_safe_int(f.get("spotify_monthly_listeners")),
             tiktok_followers=_safe_int(f.get("tiktok_followers")),
             ig_followers=_safe_int(f.get("ig_followers")),
@@ -85,6 +90,11 @@ def intake():
         brief.compute_maturity()
         db.session.add(brief)
         db.session.commit()
+
+        flash(
+            "Great! Here’s your music analysis — then you’ll get ranked marketer matches.",
+            "success",
+        )
 
         try:
             run_analysis(brief.id)
@@ -178,6 +188,34 @@ def campaign_report(id):
         strategy=strategy,
         results=results,
     )
+
+
+@artist_bp.route("/history", methods=["GET", "POST"])
+def history():
+    """Email lookup for past campaigns — no password for MVP."""
+    briefs = []
+    email = ""
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        if not email:
+            flash("Enter the email you used on intake.", "error")
+        else:
+            briefs = (
+                CampaignBrief.query.filter(db.func.lower(CampaignBrief.email) == email)
+                .order_by(CampaignBrief.id.desc())
+                .all()
+            )
+            if not briefs:
+                flash("No campaigns found for that email.", "error")
+    elif request.args.get("email"):
+        email = request.args.get("email", "").strip().lower()
+        if email:
+            briefs = (
+                CampaignBrief.query.filter(db.func.lower(CampaignBrief.email) == email)
+                .order_by(CampaignBrief.id.desc())
+                .all()
+            )
+    return render_template("artist_history.html", briefs=briefs, email=email)
 
 
 @artist_bp.route("/brief/<int:id>")

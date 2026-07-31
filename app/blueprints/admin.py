@@ -81,7 +81,12 @@ def index():
     apps_pending = MarketerApplication.query.filter_by(status="pending").count()
     catalog_count = catalog_marketers_query().count()
     pending_intros = IntroRequest.query.filter_by(status="pending").count()
+    total_briefs = CampaignBrief.query.count()
+    total_intros = IntroRequest.query.count()
+    sent_intros = IntroRequest.query.filter(IntroRequest.status.in_(("sent", "replied", "closed"))).count()
+    intro_action_rate = round((sent_intros / total_intros), 2) if total_intros else 0
     recent_intros = IntroRequest.query.order_by(IntroRequest.created_at.desc()).limit(5).all()
+    recent_briefs = CampaignBrief.query.order_by(CampaignBrief.id.desc()).limit(8).all()
     return render_template(
         "admin_index.html",
         pending=pending,
@@ -91,6 +96,10 @@ def index():
         catalog_count=catalog_count,
         pending_intros=pending_intros,
         recent_intros=recent_intros,
+        total_briefs=total_briefs,
+        total_intros=total_intros,
+        intro_action_rate=intro_action_rate,
+        recent_briefs=recent_briefs,
     )
 
 
@@ -407,3 +416,57 @@ def update_intro_status(id):
         db.session.commit()
         flash(f"Intro #{intro.id} marked {status}.", "success")
     return redirect(url_for("admin.intros"))
+
+
+@admin_bp.route("/artists/export")
+@require_admin
+def export_artists_csv():
+    """CSV of campaign briefs for ops / agency pitches."""
+    import csv
+    import io
+
+    from flask import Response
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "brief_id",
+            "artist_name",
+            "email",
+            "genres",
+            "goals",
+            "services_needed",
+            "budget_min",
+            "budget_max",
+            "maturity_tier",
+            "preferred_provider_type",
+            "engine_stage",
+            "spotify_artist_url",
+            "created_at",
+        ]
+    )
+    briefs = CampaignBrief.query.order_by(CampaignBrief.id.desc()).all()
+    for b in briefs:
+        writer.writerow(
+            [
+                b.id,
+                b.artist_name,
+                b.email or "",
+                "|".join(b.genres or []),
+                "|".join(b.goals or []),
+                "|".join(b.services_needed or []),
+                b.budget_min or "",
+                b.budget_max or "",
+                b.maturity_tier or "",
+                b.preferred_provider_type or "either",
+                b.engine_stage or "",
+                b.spotify_artist_url or "",
+                b.created_at.isoformat(sep=" ", timespec="seconds") if b.created_at else "",
+            ]
+        )
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=soundmatch_artists.csv"},
+    )

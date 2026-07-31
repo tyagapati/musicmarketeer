@@ -43,7 +43,32 @@
         <div class="score">{{ pending_intros }}</div>
         <p style="margin:0;">Pending intros</p>
     </div>
+    <div class="card" style="flex:1;min-width:140px;text-align:center;">
+        <div class="score" style="color:#6ee7b7;">{{ total_briefs }}</div>
+        <p style="margin:0;">Artist campaigns</p>
+    </div>
+    <div class="card" style="flex:1;min-width:140px;text-align:center;">
+        <div class="score">{{ total_intros }}</div>
+        <p style="margin:0;">Total intros</p>
+    </div>
+    <div class="card" style="flex:1;min-width:140px;text-align:center;">
+        <div class="score">{{ (intro_action_rate * 100)|int }}%</div>
+        <p style="margin:0;">Intros actioned</p>
+    </div>
 </div>
+{% if recent_briefs %}
+<div class="card" style="margin-bottom:1.5rem;">
+    <h2 style="margin-top:0;font-size:1.05rem;">Recent artist campaigns</h2>
+    {% for b in recent_briefs %}
+    <p style="margin:.35rem 0;">
+        #{{ b.id }} · <strong>{{ b.artist_name }}</strong>
+        {% if b.email %}<span style="color:#6b7280;">({{ b.email }})</span>{% endif %}
+        · {{ b.engine_stage or 'intake' }}
+        · <a href="/search/match/{{ b.id }}">matches</a>
+    </p>
+    {% endfor %}
+</div>
+{% endif %}
 {% if recent_intros %}
 <div class="card" style="margin-bottom:1.5rem;">
     <h2 style="margin-top:0;font-size:1.05rem;">Recent introduction requests</h2>
@@ -58,6 +83,7 @@
     <a href="/admin/marketers" class="btn btn-primary">Manage marketers →</a>
     <a href="{{ url_for('admin.add_marketer') }}" class="btn btn-secondary">Add marketer</a>
     <a href="/admin/intros" class="btn btn-secondary">Introduction requests ({{ pending_intros }})</a>
+    <a href="{{ url_for('admin.export_artists_csv') }}" class="btn btn-secondary">Export artists CSV</a>
     <a href="/admin/discovery-report" class="btn btn-secondary">Discovery report</a>
     <a href="/admin/applications" class="btn btn-secondary">Applications ({{ apps_pending }})</a>
     <form method="POST" action="/admin/ingest" style="margin:0;" class="discovery-form">

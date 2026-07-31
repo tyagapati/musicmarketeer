@@ -1,4 +1,4 @@
-"""Marketing strategy recommendations from music analysis."""
+"""Marketing strategy from stated goals, services, and platform reach — not fake audio."""
 from __future__ import annotations
 
 from app import db
@@ -8,70 +8,92 @@ CHANNEL_DEFS = [
     {
         "service": "playlist_pitching",
         "title": "Playlist pitching",
-        "signals": ("playlist", "playlist-curators", "feel-good", "emerging-listeners"),
+        "goal_keys": ("playlist", "stream", "spotify"),
+        "platforms": ("playlist", "streaming"),
     },
     {
         "service": "social_media_strategy",
         "title": "TikTok / social content",
-        "signals": ("tiktok", "tiktok-native", "dancefloor", "high-energy-listeners"),
+        "goal_keys": ("tiktok", "social", "follow", "viral", "instagram"),
+        "platforms": ("tiktok", "social"),
     },
     {
         "service": "ads",
         "title": "Paid social & streaming ads",
-        "signals": ("high-energy-listeners", "established-fanbase", "dancefloor"),
+        "goal_keys": ("ads", "growth", "stream", "follow"),
+        "platforms": ("tiktok", "social", "streaming", "video"),
     },
     {
         "service": "pr",
         "title": "Press & narrative PR",
-        "signals": ("press", "lyric-forward", "storytelling", "introspection"),
+        "goal_keys": ("press", "pr", "story", "publicity"),
+        "platforms": ("press",),
     },
     {
         "service": "release_campaigns",
         "title": "Release campaign",
-        "signals": ("emerging-listeners", "playlist", "celebration"),
+        "goal_keys": ("release", "launch"),
+        "platforms": ("playlist", "streaming", "tiktok", "social", "video"),
     },
     {
         "service": "identity_positioning",
         "title": "Brand & positioning",
-        "signals": ("personal storytelling", "introspection", "moody"),
+        "goal_keys": ("brand", "identity", "position"),
+        "platforms": (),
     },
     {
         "service": "analytics",
         "title": "Audience analytics",
-        "signals": ("established-fanbase", "emerging-listeners"),
+        "goal_keys": ("analytic", "data", "insight"),
+        "platforms": (),
     },
 ]
 
 
-def _score_channel(defn: dict, audience: dict, averages: dict, brief: CampaignBrief) -> tuple[float, str]:
-    tags = set(audience.get("tags") or [])
-    channels = set(audience.get("primary_channels") or [])
+def _goal_blob(brief: CampaignBrief) -> str:
+    return " ".join(str(g).lower() for g in (brief.goals or []))
+
+
+def _score_channel(defn: dict, audience: dict, brief: CampaignBrief) -> tuple[float, str]:
     score = 0.0
-    reasons = []
-    for sig in defn["signals"]:
-        if sig in tags or sig in channels:
-            score += 0.22
-            reasons.append(sig.replace("-", " "))
+    reasons: list[str] = []
+    channels = set(audience.get("primary_channels") or [])
+    goals = _goal_blob(brief)
+
     if defn["service"] in (brief.services_needed or []):
-        score += 0.35
-        reasons.append("you requested this")
-    energy = averages.get("energy", 0.5)
-    if defn["service"] == "social_media_strategy" and energy >= 0.6:
-        score += 0.15
-        reasons.append("high energy sound")
-    if defn["service"] == "playlist_pitching" and averages.get("danceability", 0) >= 0.55:
-        score += 0.12
-        reasons.append("playlist-friendly production")
-    rationale = ", ".join(reasons[:3]) or "general fit for your campaign stage"
-    return min(score, 1.0), rationale
+        score += 0.5
+        reasons.append("you selected this service")
+
+    for key in defn["goal_keys"]:
+        if key in goals:
+            score += 0.25
+            reasons.append(f"goal mentions {key}")
+            break
+
+    platform_hits = [p for p in defn["platforms"] if p in channels]
+    if platform_hits:
+        score += 0.25
+        reasons.append(f"stated reach on {platform_hits[0]}")
+
+    # Early artists often need identity + social; advanced often need ads — from maturity formula
+    if brief.maturity_tier == "early" and defn["service"] in ("identity_positioning", "social_media_strategy"):
+        score += 0.1
+        reasons.append("early-stage reach")
+    if brief.maturity_tier == "advanced" and defn["service"] in ("ads", "analytics"):
+        score += 0.1
+        reasons.append("larger stated reach")
+
+    if not reasons:
+        return 0.0, "no direct match to your stated goals, services, or platform stats"
+
+    return min(score, 1.0), ", ".join(reasons[:3])
 
 
 def build_strategy(brief: CampaignBrief, analysis: MusicAnalysis) -> CampaignStrategy:
     audience = analysis.audience_profile or {}
-    averages = (analysis.audio_features or {}).get("averages") or {}
     ranked = []
     for defn in CHANNEL_DEFS:
-        score, rationale = _score_channel(defn, audience, averages, brief)
+        score, rationale = _score_channel(defn, audience, brief)
         ranked.append(
             {
                 "service": defn["service"],
@@ -80,29 +102,41 @@ def build_strategy(brief: CampaignBrief, analysis: MusicAnalysis) -> CampaignStr
                 "rationale": rationale,
             }
         )
-    ranked.sort(key=lambda x: -x["score"])
+    ranked.sort(key=lambda x: (-x["score"], x["title"]))
 
-    mood = audience.get("mood", "distinct")
+    # Drop zero-evidence channels from the top list unless nothing scored
+    evidenced = [r for r in ranked if r["score"] > 0]
+    display = evidenced[:5] if evidenced else ranked[:3]
+
+    goals = ", ".join(brief.goals or []) or "your stated goals"
+    services = ", ".join(brief.services_needed or []) or "no services selected yet"
+    platforms = ", ".join(audience.get("primary_channels") or []) or "no platform stats entered"
     insights = (
-        f"Your music comes across as {mood}. "
-        f"Listeners who respond to this sound often discover artists through "
-        f"{ranked[0]['title'].lower()} and {ranked[1]['title'].lower()} before deeper fan conversion."
+        f"Recommendations are ranked from what you told us — goals ({goals}), "
+        f"services ({services}), and platform reach ({platforms}). "
+        f"They are not based on invented audio or lyric analysis."
     )
-    actions = [
-        {"step": 1, "action": f"Prioritize {ranked[0]['title'].lower()}", "why": ranked[0]["rationale"]},
-        {"step": 2, "action": f"Layer in {ranked[1]['title'].lower()}", "why": ranked[1]["rationale"]},
-        {"step": 3, "action": "Connect with a marketer who has executed this playbook", "why": "human expertise accelerates fit"},
-    ]
+    actions = []
+    for i, row in enumerate(display[:3], start=1):
+        actions.append({"step": i, "action": f"Prioritize {row['title'].lower()}", "why": row["rationale"]})
+    if not actions:
+        actions = [
+            {
+                "step": 1,
+                "action": "Add goals or services on intake for sharper channel ranking",
+                "why": "strategy needs stated intent",
+            }
+        ]
 
     strategy = CampaignStrategy.query.filter_by(brief_id=brief.id).first()
     if not strategy:
         strategy = CampaignStrategy(brief_id=brief.id)
         db.session.add(strategy)
-    strategy.recommended_channels = ranked[:5]
+    strategy.recommended_channels = display
     strategy.audience_insights = insights
     strategy.priority_actions = actions
     if not strategy.artist_priorities:
-        strategy.artist_priorities = [r["service"] for r in ranked[:3]]
+        strategy.artist_priorities = [r["service"] for r in display[:3]]
     return strategy
 
 

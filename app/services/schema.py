@@ -99,6 +99,8 @@ def ensure_schema():
             ("engine_stage", "ALTER TABLE campaign_briefs ADD COLUMN engine_stage VARCHAR(50) DEFAULT 'intake'"),
             ("analysis_status", "ALTER TABLE campaign_briefs ADD COLUMN analysis_status VARCHAR(50) DEFAULT 'pending'"),
             ("analysis_error", "ALTER TABLE campaign_briefs ADD COLUMN analysis_error TEXT"),
+            ("preferred_provider_type", "ALTER TABLE campaign_briefs ADD COLUMN preferred_provider_type VARCHAR(20) DEFAULT 'either'"),
+            ("created_at", "ALTER TABLE campaign_briefs ADD COLUMN created_at DATETIME"),
         ):
             _add_column_if_missing("campaign_briefs", col, ddl)
         db.session.commit()

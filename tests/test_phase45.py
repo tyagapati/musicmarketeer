@@ -18,33 +18,36 @@ def test_build_lyrical_essence_from_brief():
         spotify_monthly_listeners=800,
     )
     lyrical = build_lyrical_essence(brief, [{"name": "Night Drive"}])
-    assert "introspection" in lyrical["themes"] or "storytelling" in lyrical["themes"]
-    assert lyrical["narrative_voice"]
-    assert lyrical["hook_patterns"]
+    assert "nocturnal" in lyrical["themes"]  # from real title word "night"
+    assert "short-form growth" in lyrical["goal_priorities"]
+    assert "short-form-led" in lyrical["platform_signals"]
+    assert "narrative_voice" not in lyrical
+    assert "emotional_arc" not in lyrical
+    assert "hook_patterns" not in lyrical
 
 
-def test_genius_enrichment_optional(app, brief_with_spotify, monkeypatch):
-    monkeypatch.delenv("SPOTIFY_CLIENT_ID", raising=False)
-    monkeypatch.delenv("LASTFM_API_KEY", raising=False)
+def test_genius_enrichment_optional(monkeypatch):
     monkeypatch.setenv("GENIUS_ACCESS_TOKEN", "test-token")
 
     def fake_search(title, artist=""):
         return {"id": 1, "title": title, "url": "https://genius.com/test", "primary_artist": artist}
 
     monkeypatch.setattr("app.services.genius_client.search_song", fake_search)
-    with app.app_context():
-        analysis = run_analysis(brief_with_spotify.id)
-        assert analysis.lyrical_analysis.get("genius_refs")
-        assert analysis.lyrical_analysis["genius_refs"][0]["url"] == "https://genius.com/test"
+    from app.services.genius_client import enrich_tracks_with_genius
 
-def test_analysis_includes_lyrical_essence(app, brief_with_spotify, monkeypatch):
+    enriched = enrich_tracks_with_genius([{"name": "Night Drive"}], "Luna")
+    assert enriched[0]["genius"]["url"] == "https://genius.com/test"
+
+
+def test_analysis_includes_evidence_cues(app, brief_with_spotify, monkeypatch):
     monkeypatch.delenv("SPOTIFY_CLIENT_ID", raising=False)
     monkeypatch.delenv("LASTFM_API_KEY", raising=False)
     with app.app_context():
         analysis = run_analysis(brief_with_spotify.id)
-        assert analysis.lyrical_analysis.get("themes")
-        assert analysis.audience_profile.get("lyrical_themes")
-        assert "Lyrical positioning" in (analysis.sonic_summary or "")
+        assert analysis.lyrical_analysis.get("source") == "evidence"
+        assert analysis.audience_profile.get("tags")
+        assert analysis.audio_features.get("averages") == {}
+        assert "energy/tempo" in (analysis.sonic_summary or "").lower() or "brief" in (analysis.sonic_summary or "").lower()
 
 
 def test_matcher_uses_audience_signals(app, brief_with_spotify, monkeypatch):

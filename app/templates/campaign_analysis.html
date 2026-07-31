@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Music analysis – {{ brief.artist_name }}{% endblock %}
 {% block content %}
+{% set audio_source = (analysis.audio_features.source if analysis and analysis.audio_features else 'none') %}
+{% set measured_audio = audio_source == 'spotify' and averages %}
 <div class="card" style="margin-bottom:1rem;">
     <p style="color:var(--muted);font-size:.85rem;margin:0 0 .5rem;">Step 1 of 3 · Understand your music</p>
     <h1 style="margin:0;">{{ brief.artist_name }}</h1>
@@ -12,7 +14,7 @@
         <span class="badge">Spotify live</span>
         {% if analysis.spotify_profile.followers %}<span class="badge">{{ "{:,}".format(analysis.spotify_profile.followers) }} followers</span>{% endif %}
         {% if analysis.spotify_profile.popularity is not none %}<span class="badge">popularity {{ analysis.spotify_profile.popularity }}</span>{% endif %}
-        {% if analysis.audio_features and analysis.audio_features.source %}<span class="badge">{{ analysis.audio_features.source }}</span>{% endif %}
+        {% if measured_audio %}<span class="badge">measured audio</span>{% else %}<span class="badge">no measured audio features</span>{% endif %}
     </p>
     {% endif %}
 </div>
@@ -25,15 +27,27 @@
 
 {% if analysis %}
 <div class="card" style="margin-bottom:1rem;">
-    <h2 style="margin-top:0;">Sonic essence</h2>
+    <h2 style="margin-top:0;">What we know</h2>
     <p style="line-height:1.6;color:var(--muted);">{{ analysis.sonic_summary }}</p>
 </div>
 
 {% if analysis.audience_profile %}
 <div class="card" style="margin-bottom:1rem;">
-    <h2 style="margin-top:0;">Audience profile</h2>
-    <p><strong>Mood:</strong> {{ analysis.audience_profile.mood or '—' }}</p>
-    <p><strong>Tags:</strong>
+    <h2 style="margin-top:0;">Audience evidence</h2>
+    {% if analysis.audience_profile.mood %}
+    <p><strong>Measured mood:</strong> {{ analysis.audience_profile.mood }}</p>
+    {% endif %}
+    {% if analysis.audience_profile.maturity_tier %}
+    <p><strong>Reach stage:</strong> {{ analysis.audience_profile.maturity_tier }}
+        <span style="color:var(--muted);font-size:.85rem;">(from follower counts you entered)</span>
+    </p>
+    {% endif %}
+    {% if analysis.audience_profile.primary_channels %}
+    <p><strong>Platforms with stated reach:</strong>
+        {% for ch in analysis.audience_profile.primary_channels %}<span class="badge">{{ ch }}</span>{% endfor %}
+    </p>
+    {% endif %}
+    <p><strong>Genres / labels:</strong>
         {% for tag in analysis.audience_profile.tags or [] %}
         <span class="badge">{{ tag }}</span>
         {% endfor %}
@@ -41,14 +55,15 @@
 </div>
 {% endif %}
 
-{% if averages %}
+{% if measured_audio %}
 <div class="card" style="margin-bottom:1rem;">
-    <h2 style="margin-top:0;">Audio signature</h2>
+    <h2 style="margin-top:0;">Measured audio signature</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin:0 0 .75rem;">From Spotify audio-features (not estimates).</p>
     {% for key, val in averages.items() %}
     {% if key != 'tempo' %}
     <p style="margin:.4rem 0;font-size:.9rem;">
         <span style="display:inline-block;width:120px;text-transform:capitalize;">{{ key }}</span>
-        <span style="display:inline-block;width:{{ (val * 100)|int }}%;max-width:200px;height:8px;background:linear-gradient(90deg,#22d3ee,#a78bfa);border-radius:4px;vertical-align:middle;"></span>
+        <span style="display:inline-block;width:{{ (val * 100)|int }}%;max-width:200px;height:8px;background:linear-gradient(90deg,#2bb3a3,#e8c15a);border-radius:4px;vertical-align:middle;"></span>
         <span style="margin-left:.5rem;color:var(--muted);">{{ (val * 100)|int }}%</span>
     </p>
     {% else %}
@@ -60,12 +75,12 @@
 
 {% if analysis.top_tracks %}
 <div class="card" style="margin-bottom:1rem;">
-    <h2 style="margin-top:0;">Top tracks</h2>
+    <h2 style="margin-top:0;">Tracks loaded</h2>
     <table style="width:100%;font-size:.9rem;border-collapse:collapse;">
         <thead><tr style="text-align:left;color:var(--muted);"><th>Track</th><th>Popularity</th></tr></thead>
         <tbody>
         {% for t in analysis.top_tracks[:5] %}
-        <tr><td style="padding:.35rem 0;">{{ t.name }}{% if t.album %} <span style="color:var(--muted);">· {{ t.album }}</span>{% endif %}</td><td>{{ t.popularity or '—' }}</td></tr>
+        <tr><td style="padding:.35rem 0;">{{ t.name }}{% if t.album %} <span style="color:var(--muted);">· {{ t.album }}</span>{% endif %}</td><td>{{ t.popularity if t.popularity is not none else '—' }}</td></tr>
         {% endfor %}
         </tbody>
     </table>
@@ -74,22 +89,29 @@
 
 {% if analysis.lyrical_analysis %}
 <div class="card" style="margin-bottom:1rem;">
-    <h2 style="margin-top:0;">Lyrical essence</h2>
-    <p><strong>Themes:</strong>
-        {% for theme in analysis.lyrical_analysis.themes or [] %}<span class="badge">{{ theme }}</span>{% endfor %}
+    <h2 style="margin-top:0;">Campaign cues (evidence-based)</h2>
+    {% if analysis.lyrical_analysis.title_themes or analysis.lyrical_analysis.themes %}
+    <p><strong>Words found in track titles:</strong>
+        {% for theme in analysis.lyrical_analysis.title_themes or analysis.lyrical_analysis.themes %}<span class="badge">{{ theme }}</span>{% endfor %}
     </p>
-    <p><strong>Narrative voice:</strong> {{ analysis.lyrical_analysis.narrative_voice or '—' }}</p>
-    <p><strong>Emotional arc:</strong> {{ analysis.lyrical_analysis.emotional_arc or '—' }}</p>
-    {% if analysis.lyrical_analysis.hook_patterns %}
-    <p><strong>Hook patterns:</strong> {{ analysis.lyrical_analysis.hook_patterns | join(', ') }}</p>
+    {% endif %}
+    {% if analysis.lyrical_analysis.goal_priorities %}
+    <p><strong>Priorities from your goals:</strong>
+        {% for g in analysis.lyrical_analysis.goal_priorities %}<span class="badge">{{ g }}</span>{% endfor %}
+    </p>
+    {% endif %}
+    {% if analysis.lyrical_analysis.platform_signals %}
+    <p><strong>Platform signals from your stats:</strong>
+        {% for sig in analysis.lyrical_analysis.platform_signals %}<span class="badge">{{ sig }}</span>{% endfor %}
+    </p>
     {% endif %}
     {% if analysis.lyrical_analysis.cultural_signals %}
-    <p><strong>Cultural signals:</strong>
+    <p><strong>Other brief signals:</strong>
         {% for sig in analysis.lyrical_analysis.cultural_signals %}<span class="badge">{{ sig }}</span>{% endfor %}
     </p>
     {% endif %}
     {% if analysis.lyrical_analysis.genius_refs %}
-    <p><strong>Genius references:</strong>
+    <p><strong>Genius pages (for you to review):</strong>
         {% for ref in analysis.lyrical_analysis.genius_refs %}
         {% if ref.url %}<a href="{{ ref.url }}" target="_blank" rel="noopener" style="margin-right:.5rem;">{{ ref.title or 'Song' }} ↗</a>{% endif %}
         {% endfor %}
