@@ -3,277 +3,549 @@
 {% block container_class %}container--wide{% endblock %}
 {% block extra_head %}
 <style>
-    /* Professional landing: simple structure + tasteful stock imagery */
     .lp-shell{
-        max-width: 1160px;
+        max-width: 1200px;
         margin: 0 auto;
-        padding: 0.3rem 0 2.2rem;
+        padding: 0 0 2.5rem;
     }
+
+    /* —— Hero: centered stack (Jasper-style layout) + vintage graphics —— */
     .lp-hero{
-        border: 1px solid rgba(255,255,255,.12);
+        position: relative;
+        min-height: min(92vh, 820px);
+        margin: 0 -1.25rem;
+        overflow: hidden;
+        border-bottom: 3px solid #0a0806;
+        background: #1a100c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .lp-hero__bg{
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(180deg, rgba(18,12,8,.88) 0%, rgba(18,12,8,.72) 45%, rgba(18,12,8,.58) 100%),
+            linear-gradient(0deg, rgba(232,93,4,.16), transparent 48%),
+            url("https://images.unsplash.com/photo-1483412033650-1015dfb86ad9?auto=format&fit=crop&w=2000&q=80");
+        background-size: cover;
+        background-position: center 35%;
+        filter: saturate(1.15) contrast(1.08);
+    }
+    .lp-hero__grain{
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        opacity: 0.22;
+        mix-blend-mode: soft-light;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .lp-hero__grain--heavy{
+        opacity: 0.14;
+        mix-blend-mode: overlay;
+        background-size: 180px 180px;
+    }
+    .lp-hero__wave{
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: clamp(52px, 8vw, 92px);
+        z-index: 2;
+        pointer-events: none;
         background:
-            radial-gradient(780px 300px at 15% 0%, rgba(34,211,238,.16), transparent 60%),
-            radial-gradient(780px 320px at 85% 0%, rgba(167,139,250,.16), transparent 62%),
-            linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
-        border-radius: 20px;
-        padding: 1.2rem;
-        box-shadow: 0 18px 55px rgba(0,0,0,.28);
+            repeating-radial-gradient(circle at 0% 50%, #0a0806 0 6px, #f0e2c8 6px 8px, #0a0806 8px 14px, #e85d04 14px 16px),
+            repeating-linear-gradient(180deg, #1a100c, #f6ecd8 2px, #1a100c 4px);
+        background-blend-mode: multiply;
+        filter: contrast(1.4) grayscale(0.15);
+        -webkit-mask-image: linear-gradient(90deg, #000 70%, transparent);
+        mask-image: linear-gradient(90deg, #000 70%, transparent);
+        box-shadow: 8px 0 24px rgba(0,0,0,.45);
     }
-    .lp-hero-grid{
-        display:grid;
-        grid-template-columns: 1.05fr .95fr;
-        gap: 1.15rem;
-        align-items: center;
-    }
-    .lp-hero-copy{
-        padding: 0.7rem 0.45rem 0.8rem;
-    }
-    .lp-kicker{
-        display:inline-flex;
-        align-items: center;
-        gap: .45rem;
-        font-size: 0.76rem;
-        letter-spacing: .08em;
-        text-transform: uppercase;
-        color: #D7E2FF;
-        border: 1px solid rgba(34,211,238,.35);
-        border-radius: 999px;
-        background: linear-gradient(135deg, rgba(34,211,238,.14), rgba(167,139,250,.16));
-        padding: 0.3rem 0.68rem;
-        margin-bottom: .72rem;
-    }
-    .lp-kicker::before{
+    .lp-hero__wave::after{
         content:"";
-        width: 6px;
-        height: 6px;
+        position: absolute;
+        inset: 0;
+        opacity: 0.35;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .lp-hero__burst{
+        position: absolute;
+        z-index: 2;
+        pointer-events: none;
         border-radius: 50%;
-        background: #22D3EE;
-        box-shadow: 0 0 0 4px rgba(34,211,238,.18);
+        filter: blur(40px);
+        opacity: 0.55;
+    }
+    .lp-hero__burst--a{
+        width: 280px; height: 280px;
+        right: 6%; top: 10%;
+        background: radial-gradient(circle, rgba(232,93,4,.7), transparent 68%);
+    }
+    .lp-hero__burst--b{
+        width: 220px; height: 220px;
+        left: 8%; bottom: 14%;
+        background: radial-gradient(circle, rgba(42,157,143,.55), transparent 70%);
+    }
+    .lp-hero__burst--c{
+        width: 160px; height: 160px;
+        right: 28%; bottom: 8%;
+        background: radial-gradient(circle, rgba(244,196,48,.4), transparent 70%);
+    }
+    .lp-hero__vinyl{
+        position: absolute;
+        right: -8%;
+        bottom: -18%;
+        width: min(42vw, 360px);
+        height: min(42vw, 360px);
+        z-index: 2;
+        pointer-events: none;
+        border-radius: 50%;
+        background:
+            radial-gradient(circle at center, #1a100c 0 12%, transparent 12.5% 14%, #1a100c 14.5% 100%),
+            repeating-radial-gradient(circle at center, #2a2018 0 2px, #120e0b 2px 4px);
+        box-shadow:
+            0 0 0 10px rgba(240,226,200,.12),
+            0 0 0 14px #0a0806,
+            0 30px 60px rgba(0,0,0,.5);
+        opacity: 0.75;
+        animation: vinyl-spin 80s linear infinite;
+    }
+    .lp-hero__vinyl::before{
+        content:"";
+        position: absolute;
+        inset: 28%;
+        border-radius: 50%;
+        background: radial-gradient(circle, #e85d04 0 22%, #f4c430 22% 38%, #1a100c 38%);
+        box-shadow: inset 0 0 0 3px rgba(0,0,0,.4);
+    }
+    @keyframes vinyl-spin{
+        to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce){
+        .lp-hero__vinyl{ animation: none; }
+    }
+
+    .lp-stickers{
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        pointer-events: none;
+    }
+    .lp-tape{
+        position: absolute;
+        display: inline-block;
+        padding: 0.35rem 0.7rem;
+        font-family: var(--font-tape);
+        font-size: clamp(0.72rem, 1.5vw, 0.92rem);
+        letter-spacing: 0.04em;
+        line-height: 1.2;
+        box-shadow: 3px 4px 0 rgba(0,0,0,.55);
+        transform-origin: center;
+    }
+    .lp-tape--dark{ background: #0a0806; color: #f6ecd8; }
+    .lp-tape--light{
+        background: #f0e2c8;
+        color: #120e0b;
+        background-image: linear-gradient(180deg, rgba(255,255,255,.15), transparent 40%);
+    }
+    .lp-tape--orange{ background: #e85d04; color: #120e0b; font-weight: 700; }
+    .lp-tape--1{ top: 14%; left: clamp(5rem, 10vw, 7.5rem); transform: rotate(-3deg); }
+    .lp-tape--2{ top: 18%; right: 8%; transform: rotate(4deg); }
+    .lp-tape--3{ bottom: 16%; left: 10%; transform: rotate(-5deg); }
+    .lp-tape--4{ bottom: 22%; right: 10%; transform: rotate(2deg); font-size: 0.78rem; }
+
+    .lp-hero__copy{
+        position: relative;
+        z-index: 4;
+        width: min(720px, 100%);
+        margin: 0 auto;
+        padding: clamp(4.5rem, 12vh, 6.5rem) clamp(1.25rem, 4vw, 2rem);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    .lp-announce{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin: 0 0 1.35rem;
+        padding: 0.35rem 0.85rem 0.35rem 0.35rem;
+        border-radius: 999px;
+        background: rgba(10,8,6,.55);
+        border: 1px solid rgba(246,236,216,.22);
+        box-shadow: 0 10px 30px rgba(0,0,0,.28), 3px 3px 0 rgba(232,93,4,.35);
+        backdrop-filter: blur(8px);
+        text-decoration: none;
+        color: #f6ecd8;
+        font-size: 0.84rem;
+        font-weight: 600;
+        max-width: 100%;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .lp-announce:hover{
+        background: rgba(10,8,6,.72);
+        text-decoration: none;
+        color: #f6ecd8;
+        transform: translateY(-1px);
+    }
+    .lp-announce__badge{
+        flex-shrink: 0;
+        padding: 0.2rem 0.45rem;
+        border-radius: 999px;
+        background: #e85d04;
+        color: #120e0b;
+        font-family: var(--font-tape);
+        font-size: 0.68rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .lp-announce__text{ text-align: left; line-height: 1.3; }
+    .lp-announce__arrow{ opacity: 0.7; margin-left: 0.15rem; }
+
+    .lp-brand{
+        font-family: var(--font-display);
+        font-size: clamp(3.2rem, 8vw, 5.8rem);
+        line-height: 0.9;
+        letter-spacing: 0.04em;
+        color: #f6ecd8;
+        text-transform: uppercase;
+        margin: 0 0 0.85rem;
+        -webkit-text-stroke: 2px #0a0806;
+        paint-order: stroke fill;
+        text-shadow: 4px 4px 0 #0a0806, 0 0 40px rgba(232,93,4,.35);
+    }
+    .lp-brand span{
+        color: #f4c430;
+        -webkit-text-stroke: 2px #0a0806;
     }
     .lp-hero h1{
-        max-width: 760px;
-        margin: 0 0 .65rem;
-        line-height: 1.03;
-        font-size: clamp(2.15rem, 4.1vw, 4rem);
-        font-weight: 900;
-        letter-spacing: -0.03em;
-        color: #F8FBFF;
-        text-wrap: balance;
-        text-shadow: 0 10px 35px rgba(7,10,19,.45);
+        margin: 0 0 0.85rem;
+        font-family: var(--font-body);
+        font-size: clamp(1.15rem, 0.6rem + 1.5vw, 1.55rem);
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        text-transform: none;
+        color: #f6ecd8;
+        max-width: 28ch;
+        line-height: 1.35;
+        text-shadow: 0 2px 16px rgba(0,0,0,.45);
     }
-    .lp-hero h1 strong{
-        background: linear-gradient(135deg, #8BE6F7 0%, #B9A7FF 100%);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-    }
-    .lp-hero p{
-        color: var(--muted);
-        max-width: 62ch;
-        margin: 0 0 .95rem;
-        font-size: 1rem;
+    .lp-hero__lede{
+        max-width: 46ch;
+        margin: 0 0 1.5rem;
+        color: rgba(246,236,216,.84);
+        font-size: 1.02rem;
+        line-height: 1.65;
+        text-shadow: 0 2px 12px rgba(0,0,0,.5);
     }
     .lp-cta-row{
-        display:flex;
-        justify-content:flex-start;
-        gap:.75rem;
+        display: flex;
+        gap: 0.75rem;
         flex-wrap: wrap;
-        margin-top: .6rem;
+        align-items: center;
+        justify-content: center;
     }
+    .lp-cta-row .btn-primary{
+        background: #e85d04;
+        color: #120e0b;
+        border: 2px solid #0a0806;
+        border-radius: 2px;
+        box-shadow: 4px 4px 0 #0a0806;
+        letter-spacing: 0.12em;
+        min-width: 10.5rem;
+    }
+    .lp-cta-row .btn-primary:hover{
+        background: #f4c430;
+        filter: none;
+        transform: translate(-1px, -1px);
+        box-shadow: 5px 5px 0 #0a0806;
+    }
+    .lp-cta-row .btn-secondary{
+        background: transparent;
+        border: 2px solid rgba(246,236,216,.65);
+        color: #f6ecd8;
+        border-radius: 2px;
+        min-width: 10.5rem;
+    }
+    .lp-cta-row .btn-secondary:hover{ background: rgba(246,236,216,.08); }
     .lp-note{
-        margin-top: .9rem;
-        color: var(--muted2);
-        font-size: .9rem;
+        margin-top: 1.25rem;
+        display: inline-block;
+        padding: 0.3rem 0.55rem;
+        background: rgba(10,8,6,.72);
+        color: #f0e2c8;
+        font-family: var(--font-tape);
+        font-size: 0.78rem;
+        max-width: 48ch;
+        transform: rotate(0.6deg);
+        box-shadow: 2px 2px 0 rgba(232,93,4,.6);
     }
-    .lp-hero-media{
-        border-radius: 14px;
-        overflow: hidden;
-        border: 1px solid rgba(255,255,255,.11);
-        min-height: 390px;
-        background: #0d1428;
-        position: relative;
+
+    /* Sections — record-shop shelves */
+    .lp-section{
+        padding: clamp(2.25rem, 5vw, 3.5rem) 0 0;
     }
-    .lp-hero-media img{
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display:block;
+    .lp-section-head{
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.15rem;
+        border-bottom: 2px solid rgba(240,226,200,.18);
+        padding-bottom: 0.65rem;
     }
-    .lp-hero-media::after{
-        content:"";
-        position:absolute;
-        inset:0;
-        background: linear-gradient(180deg, rgba(7,10,19,0) 52%, rgba(7,10,19,.55) 100%);
-        pointer-events:none;
+    .lp-section-head h2{
+        margin: 0;
+        font-size: clamp(1.7rem, 2.2vw, 2.3rem);
+        color: var(--sand);
     }
-    .lp-media-badge{
-        position:absolute;
-        left: .8rem;
-        bottom: .8rem;
-        z-index: 1;
-        background: rgba(7,10,19,.7);
-        border: 1px solid rgba(255,255,255,.18);
-        backdrop-filter: blur(5px);
-        border-radius: 10px;
-        padding: .45rem .58rem;
-        font-size: .75rem;
-        color: #DDE7FF;
+    .lp-section-head span{
+        font-family: var(--font-tape);
+        font-size: 0.78rem;
+        letter-spacing: 0.04em;
+        color: #120e0b;
+        background: #f4c430;
+        padding: 0.25rem 0.5rem;
+        box-shadow: 2px 2px 0 #0a0806;
+        transform: rotate(1deg);
     }
 
     .lp-strip{
-        margin-top: 1rem;
-        display:grid;
+        display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap:.8rem;
+        gap: 0;
+        border: 2px solid rgba(240,226,200,.2);
+        background:
+            linear-gradient(180deg, rgba(245,230,200,.05), rgba(0,0,0,.15)),
+            repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,.04) 3px, rgba(0,0,0,.04) 4px);
     }
-    .lp-card{
-        border: 1px solid rgba(255,255,255,.10);
-        background: rgba(255,255,255,.04);
-        border-radius: 14px;
-        padding: 1rem;
+    .lp-step{
+        padding: 1.25rem 1.15rem 1.4rem;
+        border-right: 1px solid rgba(240,226,200,.14);
+        position: relative;
+        overflow: hidden;
+        transition: background 0.25s ease;
     }
-    .lp-card h3{
-        margin: 0 0 .35rem;
-        font-size: 1.03rem;
-        color: #EEF2FF;
+    .lp-step:last-child{ border-right: none; }
+    .lp-step:hover{ background: rgba(232,93,4,.08); }
+    .lp-step-num{
+        font-family: var(--font-display);
+        font-size: 2.5rem;
+        color: rgba(232,93,4,.55);
+        line-height: 1;
+        margin-bottom: 0.45rem;
     }
-    .lp-card p{
+    .lp-step h3{
+        margin: 0 0 0.4rem;
+        font-size: 1.4rem;
+        color: var(--sand);
+    }
+    .lp-step p{
         margin: 0;
+        font-size: 0.94rem;
         color: var(--muted);
-        font-size: .95rem;
         line-height: 1.55;
     }
+
     .lp-showcase{
-        margin-top: 1rem;
-        display:grid;
-        grid-template-columns: repeat(3, minmax(0,1fr));
-        gap: .8rem;
+        display: grid;
+        grid-template-columns: 1.35fr 1fr 1fr;
+        gap: 0.75rem;
     }
-    .lp-media-card{
-        border: 1px solid rgba(255,255,255,.10);
-        background: rgba(255,255,255,.04);
-        border-radius: 14px;
+    .lp-shot{
+        position: relative;
         overflow: hidden;
+        border: 2px solid #0a0806;
+        min-height: 260px;
+        background: #1a100c;
+        box-shadow: 4px 4px 0 rgba(232,93,4,.35);
     }
-    .lp-media-card img{
+    .lp-shot:first-child{ min-height: 360px; }
+    .lp-shot img{
         width: 100%;
-        height: 200px;
+        height: 100%;
         object-fit: cover;
-        display:block;
+        display: block;
+        filter: saturate(1.05) contrast(1.08) sepia(0.12);
+        transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
     }
-    .lp-media-card .meta{
-        padding: .8rem .85rem .95rem;
+    .lp-shot:hover img{ transform: scale(1.04); }
+    .lp-shot__meta{
+        position: absolute;
+        left: 0; right: 0; bottom: 0;
+        padding: 1.1rem 1rem 1rem;
+        background: linear-gradient(180deg, transparent, rgba(12,8,6,.94));
     }
-    .lp-media-card h4{
-        margin: 0 0 .3rem;
-        font-size: .98rem;
-        color: #EFF4FF;
+    .lp-shot__meta h4{
+        margin: 0 0 0.25rem;
+        font-size: 1.3rem;
+        color: #f6ecd8;
+        text-shadow: 2px 2px 0 #0a0806;
     }
-    .lp-media-card p{
+    .lp-shot__meta p{
         margin: 0;
-        color: var(--muted);
-        font-size: .9rem;
+        font-size: 0.88rem;
+        color: rgba(246,236,216,.78);
     }
+    .lp-shot__tag{
+        position: absolute;
+        top: 0.75rem;
+        left: 0.75rem;
+        z-index: 1;
+        font-family: var(--font-tape);
+        font-size: 0.72rem;
+        padding: 0.25rem 0.45rem;
+        background: #0a0806;
+        color: #f4c430;
+        box-shadow: 2px 2px 0 #e85d04;
+        transform: rotate(-2deg);
+    }
+
     .lp-final{
-        margin-top: 1rem;
-        border: 1px solid rgba(255,255,255,.12);
-        border-radius: 14px;
-        background: rgba(255,255,255,.05);
-        padding: 1.15rem;
-        display:flex;
-        align-items:center;
+        margin-top: 2rem;
+        padding: 1.5rem 0 0;
+        border-top: 2px solid rgba(240,226,200,.16);
+        display: flex;
+        align-items: flex-end;
         justify-content: space-between;
-        gap: .8rem;
+        gap: 1rem;
         flex-wrap: wrap;
     }
-    .lp-final p{
-        margin: 0;
-        color: var(--muted);
+    .lp-final h2{
+        margin: 0 0 0.35rem;
+        font-size: clamp(1.9rem, 3vw, 2.8rem);
+        -webkit-text-stroke: 1px #0a0806;
+        paint-order: stroke fill;
+    }
+    .lp-final p{ margin: 0; max-width: 42ch; }
+    .lp-legal{
+        margin-top: 1.25rem;
+        font-size: 0.8rem;
+        color: var(--muted2);
+        max-width: 62ch;
     }
     .lp-credit{
-        margin-top: .55rem;
-        font-size: .78rem;
+        margin-top: 0.45rem;
+        font-size: 0.75rem;
         color: var(--muted2);
     }
+
     @media (max-width: 900px){
-        .lp-hero-grid,
-        .lp-strip,
-        .lp-showcase{
-            grid-template-columns: 1fr;
-        }
-        .lp-hero-media{
-            min-height: 280px;
-        }
-        .lp-hero-copy{
-            padding: .55rem .2rem .7rem;
-        }
+        .lp-hero{ margin: 0; min-height: auto; }
+        .lp-hero__copy{ padding: 3.25rem 1.25rem 3rem; }
+        .lp-hero__vinyl{ opacity: 0.4; width: 220px; height: 220px; right: -18%; bottom: -12%; }
+        .lp-tape--2, .lp-tape--4{ display: none; }
+        .lp-strip, .lp-showcase{ grid-template-columns: 1fr; }
+        .lp-step{ border-right: none; border-bottom: 1px solid rgba(240,226,200,.14); }
+        .lp-step:last-child{ border-bottom: none; }
+        .lp-shot, .lp-shot:first-child{ min-height: 240px; }
     }
 </style>
 {% endblock %}
 {% block content %}
 <div class="lp-shell">
     <section class="lp-hero" aria-label="Landing hero">
-        <div class="lp-hero-grid">
-            <div class="lp-hero-copy">
-                <span class="lp-kicker">nonprofit connection engine</span>
-                <h1>Understand your music. <strong>Find your marketer.</strong></h1>
-                <p>SoundMatch analyzes your sound and audience, recommends marketing channels, then connects you with vetted marketers — no booking fees, just warm introductions.</p>
-                <div class="lp-cta-row">
-                    <a href="/artist/intake" class="btn btn-primary">Start 3-step campaign builder</a>
-                    <a href="/search/browse" class="btn btn-secondary">Browse marketers</a>
-                </div>
-                <div class="lp-note">Analyze → strategize → connect. Free for artists.</div>
+        <div class="lp-hero__bg" aria-hidden="true"></div>
+        <div class="lp-hero__grain" aria-hidden="true"></div>
+        <div class="lp-hero__grain lp-hero__grain--heavy" aria-hidden="true"></div>
+        <div class="lp-hero__wave" aria-hidden="true"></div>
+        <div class="lp-hero__burst lp-hero__burst--a" aria-hidden="true"></div>
+        <div class="lp-hero__burst lp-hero__burst--b" aria-hidden="true"></div>
+        <div class="lp-hero__burst lp-hero__burst--c" aria-hidden="true"></div>
+        <div class="lp-hero__vinyl" aria-hidden="true"></div>
+        <div class="lp-stickers" aria-hidden="true">
+            <span class="lp-tape lp-tape--dark lp-tape--1">modulator // indie catalog</span>
+            <span class="lp-tape lp-tape--light lp-tape--2">DEFY the algorithm</span>
+            <span class="lp-tape lp-tape--orange lp-tape--3">VETTED MARKETERS</span>
+            <span class="lp-tape lp-tape--dark lp-tape--4">side A · campaign briefs</span>
+        </div>
+        <div class="lp-hero__copy">
+            <a class="lp-announce" href="/search/browse">
+                <span class="lp-announce__badge">New</span>
+                <span class="lp-announce__text">Vetted marketer catalog — dig the crates</span>
+                <span class="lp-announce__arrow" aria-hidden="true">→</span>
+            </a>
+            <p class="lp-brand">Sound<span>Match</span></p>
+            <h1>Find the right marketer for your music.</h1>
+            <p class="lp-hero__lede">Independent artists waste time Googling and cold-emailing. Dig our vetted catalog of music marketers — matched to your genre, goals, and budget.</p>
+            <div class="lp-cta-row">
+                <a href="/search/browse" class="btn btn-secondary">Browse marketers</a>
+                <a href="/artist/intake" class="btn btn-primary">Get started</a>
             </div>
-            <div class="lp-hero-media">
-                <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80" alt="Producer working in a dim studio with headphones and gear" loading="eager">
-                <div class="lp-media-badge">Campaign performance + audience targeting</div>
-            </div>
+            <div class="lp-note">Free for artists · recommendations — not guarantees</div>
         </div>
     </section>
 
-    <section class="lp-strip" aria-label="How it works">
-        <article class="lp-card">
-            <h3>1 · Analyze your music</h3>
-            <p>We synthesize your sound, lyrical themes, and audience from your campaign brief.</p>
-        </article>
-        <article class="lp-card">
-            <h3>2 · Get channel strategy</h3>
-            <p>See which marketing channels fit your sonic profile and where you already have traction.</p>
-        </article>
-        <article class="lp-card">
-            <h3>3 · Connect with marketers</h3>
-            <p>Request warm introductions to ranked marketers with clear fit reasons — not cold DMs.</p>
-        </article>
+    <section class="lp-section" aria-label="How it works">
+        <div class="lp-section-head">
+            <h2>How it works</h2>
+            <span>three steps</span>
+        </div>
+        <div class="lp-strip">
+            <article class="lp-step">
+                <div class="lp-step-num">01</div>
+                <h3>Tell us your goals</h3>
+                <p>Share your genre, budget, platform traction, and what kind of marketer you want.</p>
+            </article>
+            <article class="lp-step">
+                <div class="lp-step-num">02</div>
+                <h3>Get ranked matches</h3>
+                <p>We score vetted marketers from our catalog by fit — with clear reasons, not a random Google dump.</p>
+            </article>
+            <article class="lp-step">
+                <div class="lp-step-num">03</div>
+                <h3>Connect</h3>
+                <p>Request a warm introduction or email them directly when contact info is available.</p>
+            </article>
+        </div>
     </section>
 
-    <section class="lp-showcase" aria-label="Artist growth examples">
-        <article class="lp-media-card">
-            <img src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1000&q=80" alt="Singer performing live on stage" loading="lazy">
-            <div class="meta">
-                <h4>Release planning with direction</h4>
-                <p>From campaign setup to launch windows, make decisions with data-backed fit signals.</p>
-            </div>
-        </article>
-        <article class="lp-media-card">
-            <img src="https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1000&q=80" alt="Concert crowd with lights and stage" loading="lazy">
-            <div class="meta">
-                <h4>Audience growth that compounds</h4>
-                <p>Choose marketers aligned to your goals so each release contributes to long-term momentum.</p>
-            </div>
-        </article>
-        <article class="lp-media-card">
-            <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1000&q=80" alt="Artist recording vocals in studio booth" loading="lazy">
-            <div class="meta">
-                <h4>More time for the creative work</h4>
-                <p>Spend less energy guessing and more energy creating music worth sharing.</p>
-            </div>
-        </article>
+    <section class="lp-section" aria-label="Artist growth examples">
+        <div class="lp-section-head">
+            <h2>From the crates</h2>
+            <span>real scenes</span>
+        </div>
+        <div class="lp-showcase">
+            <article class="lp-shot">
+                <span class="lp-shot__tag">live floor</span>
+                <img src="https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&amp;fit=crop&amp;w=1200&amp;q=80" alt="Singer performing live on stage" loading="lazy">
+                <div class="lp-shot__meta">
+                    <h4>Release planning with direction</h4>
+                    <p>Campaign setup to launch windows — decisions with fit signals, not vibes alone.</p>
+                </div>
+            </article>
+            <article class="lp-shot">
+                <span class="lp-shot__tag">crowds</span>
+                <img src="https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Concert crowd with lights and stage" loading="lazy">
+                <div class="lp-shot__meta">
+                    <h4>Audience that compounds</h4>
+                    <p>Marketers aligned to your goals so each release builds momentum.</p>
+                </div>
+            </article>
+            <article class="lp-shot">
+                <span class="lp-shot__tag">studio</span>
+                <img src="https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&amp;fit=crop&amp;w=900&amp;q=80" alt="Vintage recording studio gear and instruments" loading="lazy">
+                <div class="lp-shot__meta">
+                    <h4>More time creating</h4>
+                    <p>Less guessing who to hire. More energy for the music.</p>
+                </div>
+            </article>
+        </div>
     </section>
 
     <section class="lp-final" aria-label="Final call to action">
-        <p>Ready to understand your music and meet the right marketer?</p>
-        <a href="/artist/intake" class="btn btn-primary">Start your campaign</a>
+        <div>
+            <h2>Stop guessing who to hire</h2>
+            <p>Build your brief and get ranked matches from a vetted catalog.</p>
+        </div>
+        <a href="/artist/intake" class="btn btn-primary">Get started</a>
     </section>
+    <p class="lp-legal">
+      SoundMatch recommends marketers from a vetted catalog (filled via discovery + admin review). These are recommendations — your results depend on reaching out and having real conversations.
+    </p>
     <div class="lp-credit">Stock photography courtesy of Unsplash (free-to-use images).</div>
 </div>
 {% endblock %}

@@ -90,6 +90,7 @@ def _marketer_payload(m, *, brief=None):
         "evidence_summary": m.evidence_summary,
         "provider_type": m.provider_type or "agency",
         "enrolled": bool(m.enrolled),
+        "email": m.email,
     }
 
 
@@ -285,5 +286,12 @@ def _score(marketer, brief, *, analysis=None, priority_services=None, recommende
     if avg_rating and avg_rating >= 4:
         score += 0.04
         reasons.append("Strong artist ratings")
+
+    preferred = (getattr(brief, "preferred_provider_type", None) or "either").strip().lower()
+    marketer_type = (marketer.provider_type or "agency").strip().lower()
+    if preferred in ("solo", "agency") and marketer_type == preferred:
+        score += 0.07
+        # Surface early so it is not truncated from top_reasons[:5]
+        reasons.insert(0, f"Preferred {preferred} marketer")
 
     return min(score, 1.0), reasons

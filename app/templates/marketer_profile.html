@@ -21,7 +21,12 @@
 
 <div class="card">
     <h2>Request an introduction</h2>
-    <p style="color:var(--muted);font-size:.9rem;">SoundMatch is a nonprofit connection engine. We'll pass your details to this marketer so you can start a conversation.</p>
+    <p style="color:var(--muted);font-size:.9rem;">SoundMatch is a nonprofit connection engine. We'll pass your details to this marketer so you can start a conversation. Recommendations are not guarantees — success depends on real conversations.</p>
+    {% if marketer.email %}
+    <p style="margin:0 0 .75rem;">
+      <a class="btn btn-secondary btn-sm" href="mailto:{{ marketer.email }}?subject={{ ('SoundMatch intro' ~ (': ' ~ brief.artist_name if brief else ''))|urlencode }}">Email {{ marketer | marketer_brand }}</a>
+    </p>
+    {% endif %}
     <form method="POST">
         {% include '_csrf.html' %}
         {% if brief %}<input type="hidden" name="brief_id" value="{{ brief.id }}">{% endif %}

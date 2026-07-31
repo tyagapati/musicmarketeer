@@ -4,90 +4,151 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SoundMatch{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&family=Special+Elite&display=swap" rel="stylesheet">
     <style>
         :root{
-            --bg0:#070A13;
-            --bg1:#0B1022;
-            --panel:rgba(255,255,255,.04);
-            --panel2:rgba(255,255,255,.06);
-            --border:rgba(255,255,255,.10);
-            --text:#EAF0FF;
-            --muted:#A9B4D0;
-            --muted2:#7D8AB0;
-            --brand:#22D3EE;
-            --brand2:#A78BFA;
-            --good:#34D399;
-            --warn:#FBBF24;
-            --bad:#FB7185;
+            --bg0:#140f0c;
+            --bg1:#1c1510;
+            --panel:rgba(245,230,200,.06);
+            --panel2:rgba(245,230,200,.09);
+            --border:rgba(245,230,200,.16);
+            --text:#f6ecd8;
+            --muted:#c4b59a;
+            --muted2:#8f816c;
+            --brand:#e85d04;
+            --brand2:#f4c430;
+            --teal:#2a9d8f;
+            --sand:#f0e2c8;
+            --ink:#120e0b;
+            --good:#5ecf8e;
+            --warn:#f4c430;
+            --bad:#e07a7a;
+            --font-display:"Bebas Neue", Impact, Haettenschweiler, sans-serif;
+            --font-body:"Outfit", "Segoe UI", sans-serif;
+            --font-tape:"Special Elite", "Courier New", monospace;
+            --radius:4px;
+            --radius-lg:8px;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { color-scheme: dark; }
+        html { color-scheme: dark; scroll-behavior: smooth; }
         body {
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            font-family: var(--font-body);
             min-height: 100vh;
             color: var(--text);
             background:
-                radial-gradient(900px 500px at 20% 0%, rgba(34,211,238,.20), transparent 55%),
-                radial-gradient(900px 520px at 80% 0%, rgba(167,139,250,.20), transparent 55%),
-                linear-gradient(180deg, var(--bg0), var(--bg1) 45%, #070A13);
+                radial-gradient(1000px 480px at 12% -8%, rgba(232,93,4,.14), transparent 55%),
+                radial-gradient(800px 420px at 92% 8%, rgba(244,196,48,.08), transparent 50%),
+                linear-gradient(165deg, var(--bg0) 0%, var(--bg1) 50%, #1a120e 100%);
+            position: relative;
+            isolation: isolate;
         }
+        /* Static film grain — no jumpy animation */
+        body::before{
+            content:"";
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.07;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+        /* Warm vinyl-room wash */
+        body::after{
+            content:"";
+            position: fixed;
+            inset: auto 0 0 0;
+            height: 38vh;
+            z-index: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(180deg, transparent, rgba(232,93,4,.04) 45%, rgba(18,14,11,.4)),
+                repeating-linear-gradient(
+                    -14deg,
+                    transparent,
+                    transparent 32px,
+                    rgba(245,230,200,.012) 32px,
+                    rgba(245,230,200,.012) 33px
+                );
+        }
+
+        nav, .container { position: relative; z-index: 1; }
 
         nav {
             position: sticky;
             top: 0;
-            z-index: 10;
-            backdrop-filter: blur(10px);
-            background: rgba(7,10,19,.66);
+            z-index: 20;
+            backdrop-filter: blur(12px) saturate(1.1);
+            background: rgba(10,16,15,.78);
             border-bottom: 1px solid var(--border);
+        }
+        nav::after{
+            content:"";
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--brand) 20%, var(--brand2) 55%, transparent);
+            opacity: 0.55;
+            pointer-events: none;
         }
         .nav-inner{
             max-width: 1280px;
             margin: 0 auto;
-            padding: 0.9rem 1.25rem;
+            padding: 0.85rem 1.25rem;
             display:flex;
             align-items:center;
             gap: 0.9rem;
         }
-        nav a { color: var(--muted); text-decoration: none; font-size: 0.92rem; }
-        nav a:hover { color: var(--text); }
+        nav a { color: var(--muted); text-decoration: none; font-size: 0.88rem; font-weight: 600; letter-spacing: 0.02em; }
+        nav a:hover { color: var(--sand); }
         nav .brand {
             display:flex;
             align-items:center;
             gap: 0.55rem;
-            font-size: 1.05rem;
-            font-weight: 800;
-            letter-spacing: .2px;
-            color: var(--text);
+            font-family: var(--font-display);
+            font-size: 1.55rem;
+            font-weight: 400;
+            letter-spacing: 0.06em;
+            color: var(--sand);
             margin-right: auto;
+            text-transform: uppercase;
         }
+        nav .brand:hover{ text-decoration: none; color: var(--text); }
         .brand-mark{
-            width: 28px;
-            height: 28px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, rgba(34,211,238,.95), rgba(167,139,250,.95));
-            box-shadow: 0 10px 26px rgba(167,139,250,.18);
+            width: 26px;
+            height: 26px;
+            border-radius: 3px;
+            background:
+                linear-gradient(135deg, var(--brand) 0%, #c44d08 45%, var(--brand2) 100%);
+            box-shadow: 0 0 0 1px rgba(232,220,200,.2), 0 8px 20px rgba(232,93,4,.22);
+            transform: rotate(12deg);
         }
-        .nav-links{ display:flex; gap: 0.25rem; flex-wrap: wrap; align-items: center; }
+        @media (prefers-reduced-motion: reduce){
+            .brand-mark{ transform: rotate(12deg); }
+        }
+        .nav-links{ display:flex; gap: 0.15rem; flex-wrap: wrap; align-items: center; }
         .nav-link{
-            padding: 0.45rem 0.7rem;
-            border-radius: 10px;
+            padding: 0.42rem 0.65rem;
+            border-radius: var(--radius);
             position: relative;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
             transition: color 0.15s ease, background-color 0.15s ease;
         }
-        .nav-link:hover{ background: rgba(255,255,255,.04); text-decoration: none; }
-        /* Short tint, quick fade to clear; underline (::after) stays */
+        .nav-link:hover{ background: rgba(232,220,200,.06); text-decoration: none; }
         @keyframes nav-link-active-bg {
-            0%, 78.95% { background-color: rgba(34,211,238,.07); }
+            0%, 78.95% { background-color: rgba(232,93,4,.12); }
             100% { background-color: transparent; }
         }
-        /* Current section (landing “/” matches none of these) */
         .nav-link.nav-link--active{
-            color: var(--text);
+            color: var(--sand);
             animation: nav-link-active-bg 0.57s ease-out forwards;
         }
         .nav-link.nav-link--active:hover{
-            background: rgba(34,211,238,.1);
+            background: rgba(232,93,4,.14);
             text-decoration: none;
         }
         @media (prefers-reduced-motion: reduce){
@@ -99,11 +160,11 @@
         .nav-link.nav-link--active::after{
             content: "";
             position: absolute;
-            left: 0.55rem;
-            right: 0.55rem;
-            bottom: 0.2rem;
+            left: 0.5rem;
+            right: 0.5rem;
+            bottom: 0.15rem;
             height: 2px;
-            border-radius: 2px;
+            border-radius: 1px;
             background: linear-gradient(90deg, var(--brand), var(--brand2));
             pointer-events: none;
         }
@@ -111,73 +172,89 @@
         .container { max-width: 1080px; margin: 1.75rem auto 3rem; padding: 0 1.25rem; }
         .container--wide { max-width: 1280px; }
 
-        h1 { font-size: clamp(1.7rem, 2vw + 1rem, 2.4rem); font-weight: 850; margin-bottom: 0.75rem; letter-spacing: -0.02em; }
-        h2 { font-size: 1.25rem; font-weight: 750; margin-bottom: 0.6rem; color: var(--text); }
-        p { color: var(--muted); margin-bottom: 0.85rem; line-height: 1.7; }
-        a { color: color-mix(in oklab, var(--brand) 70%, white); text-decoration: none; }
-        a:hover { text-decoration: underline; }
+        h1, h2, h3, h4 {
+            font-family: var(--font-display);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            font-weight: 400;
+        }
+        h1 { font-size: clamp(2.1rem, 2.4vw + 1.2rem, 3.2rem); margin-bottom: 0.75rem; line-height: 0.95; }
+        h2 { font-size: clamp(1.35rem, 1vw + 1rem, 1.75rem); margin-bottom: 0.6rem; color: var(--sand); }
+        p { color: var(--muted); margin-bottom: 0.85rem; line-height: 1.7; font-weight: 400; }
+        a { color: color-mix(in oklab, var(--brand) 72%, white); text-decoration: none; }
+        a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
         .card {
-            background: linear-gradient(180deg, var(--panel2), var(--panel));
+            background:
+                linear-gradient(180deg, var(--panel2), var(--panel)),
+                repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,.03) 3px, rgba(0,0,0,.03) 4px);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             padding: 1.25rem;
             margin-bottom: 1rem;
-            box-shadow: 0 12px 35px rgba(0,0,0,.22);
+            box-shadow: 0 16px 40px rgba(0,0,0,.28);
         }
         .badge {
             display: inline-block;
-            padding: 0.22rem 0.6rem;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 650;
-            background: rgba(255,255,255,.05);
+            padding: 0.22rem 0.55rem;
+            border-radius: 3px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            background: rgba(232,220,200,.06);
             color: var(--muted);
             margin: 0.15rem;
-            border: 1px solid rgba(255,255,255,.08);
+            border: 1px solid rgba(232,220,200,.12);
         }
-        .badge.approved { background: rgba(52,211,153,.12); color: color-mix(in oklab, var(--good) 85%, white); border-color: rgba(52,211,153,.20); }
-        .badge.pending { background: rgba(251,191,36,.12); color: color-mix(in oklab, var(--warn) 85%, white); border-color: rgba(251,191,36,.22); }
+        .badge.approved { background: rgba(94,207,142,.12); color: color-mix(in oklab, var(--good) 85%, white); border-color: rgba(94,207,142,.25); }
+        .badge.pending { background: rgba(232,193,90,.12); color: color-mix(in oklab, var(--warn) 85%, white); border-color: rgba(232,193,90,.28); }
 
         .btn {
             display: inline-flex;
             align-items:center;
             justify-content:center;
             gap: 0.5rem;
-            padding: 0.6rem 1.05rem;
-            border-radius: 12px;
-            font-size: 0.92rem;
-            font-weight: 750;
+            padding: 0.68rem 1.15rem;
+            border-radius: var(--radius);
+            font-family: var(--font-body);
+            font-size: 0.86rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
             cursor: pointer;
             border: 1px solid transparent;
             text-decoration: none;
             white-space: nowrap;
+            transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
         }
         .btn:hover { text-decoration: none; }
         .btn-primary {
-            background: linear-gradient(135deg, rgba(34,211,238,.95), rgba(167,139,250,.95));
-            color: #071021;
-            box-shadow: 0 18px 55px rgba(34,211,238,.10);
+            background: linear-gradient(135deg, #e85d04 0%, #d45103 55%, #b84402 100%);
+            color: #120e0b;
+            border-color: rgba(246,236,216,.25);
+            box-shadow: 0 10px 28px rgba(232,93,4,.28), inset 0 1px 0 rgba(255,255,255,.2);
         }
-        .btn-primary:hover { filter: brightness(1.03); transform: translateY(-1px); }
+        .btn-primary:hover { filter: brightness(1.06); transform: translateY(-2px); }
         .btn-secondary{
-            background: rgba(255,255,255,.04);
-            border-color: rgba(255,255,255,.10);
-            color: var(--text);
+            background: rgba(232,220,200,.05);
+            border-color: rgba(232,220,200,.18);
+            color: var(--sand);
         }
-        .btn-secondary:hover{ background: rgba(255,255,255,.06); }
-        .btn-sm { padding: 0.42rem 0.75rem; font-size: 0.85rem; border-radius: 10px; }
-        .btn-success { background: rgba(52,211,153,.14); border-color: rgba(52,211,153,.22); color: color-mix(in oklab, var(--good) 85%, white); }
-        .btn-danger { background: rgba(251,113,133,.14); border-color: rgba(251,113,133,.25); color: color-mix(in oklab, var(--bad) 85%, white); }
+        .btn-secondary:hover{ background: rgba(232,220,200,.1); transform: translateY(-1px); }
+        .btn-sm { padding: 0.42rem 0.75rem; font-size: 0.76rem; border-radius: var(--radius); }
+        .btn-success { background: rgba(94,207,142,.14); border-color: rgba(94,207,142,.28); color: color-mix(in oklab, var(--good) 85%, white); }
+        .btn-danger { background: rgba(224,122,122,.14); border-color: rgba(224,122,122,.3); color: color-mix(in oklab, var(--bad) 85%, white); }
 
-        form label { display: block; font-size: 0.86rem; color: var(--muted); margin-bottom: 0.3rem; }
+        form label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 0.3rem; font-weight: 600; letter-spacing: 0.03em; }
         form input:not([type="checkbox"]):not([type="radio"]), form select, form textarea {
             width: 100%;
             padding: 0.65rem 0.8rem;
-            background: rgba(0,0,0,.18);
-            border: 1px solid rgba(255,255,255,.12);
-            border-radius: 12px;
+            background: rgba(0,0,0,.28);
+            border: 1px solid rgba(232,220,200,.14);
+            border-radius: var(--radius);
             color: var(--text);
+            font-family: var(--font-body);
             font-size: 0.95rem;
             margin-bottom: 1rem;
         }
@@ -199,18 +276,18 @@
             color: var(--text);
             margin-bottom: 0;
             padding: 0.55rem 0.65rem;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,.08);
-            background: rgba(0,0,0,.12);
+            border-radius: var(--radius);
+            border: 1px solid rgba(232,220,200,.1);
+            background: rgba(0,0,0,.16);
             transition: border-color 0.15s ease, background-color 0.15s ease;
         }
         .chk-option:hover {
-            border-color: rgba(34,211,238,.25);
-            background: rgba(34,211,238,.06);
+            border-color: rgba(232,93,4,.35);
+            background: rgba(232,93,4,.08);
         }
         .chk-option:has(input:checked) {
-            border-color: rgba(34,211,238,.45);
-            background: rgba(34,211,238,.10);
+            border-color: rgba(232,93,4,.55);
+            background: rgba(232,93,4,.12);
         }
         .taxonomy-grid {
             display: grid;
@@ -225,9 +302,9 @@
             margin-bottom: 0.75rem;
             cursor: pointer;
             padding: 0.65rem 0.75rem;
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,.08);
-            background: rgba(0,0,0,.10);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(232,220,200,.1);
+            background: rgba(0,0,0,.12);
         }
         .automation-toggle input[type="checkbox"] {
             margin-top: 0.2rem;
@@ -237,31 +314,35 @@
             -webkit-appearance: none;
             -moz-appearance: none;
             padding-right: 2.2rem;
-            background-image: linear-gradient(45deg, transparent 50%, #9fb1da 50%), linear-gradient(135deg, #9fb1da 50%, transparent 50%);
+            background-image: linear-gradient(45deg, transparent 50%, #b7aea0 50%), linear-gradient(135deg, #b7aea0 50%, transparent 50%);
             background-position: calc(100% - 18px) calc(50% - 3px), calc(100% - 12px) calc(50% - 3px);
             background-size: 6px 6px, 6px 6px;
             background-repeat: no-repeat;
         }
         form select option{
-            background: #101730;
+            background: #121a18;
             color: var(--text);
         }
-        form input:focus, form select:focus, form textarea:focus { outline: none; border-color: rgba(34,211,238,.55); box-shadow: 0 0 0 3px rgba(34,211,238,.12); }
+        form input:focus, form select:focus, form textarea:focus {
+            outline: none;
+            border-color: rgba(232,93,4,.55);
+            box-shadow: 0 0 0 3px rgba(232,93,4,.14);
+        }
         .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         @media (max-width: 820px){ .grid2{ grid-template-columns: 1fr; } }
-        .score { font-size: 1.6rem; font-weight: 900; color: color-mix(in oklab, var(--brand2) 72%, white); }
+        .score { font-family: var(--font-display); font-size: 1.8rem; font-weight: 400; color: var(--brand2); letter-spacing: 0.04em; }
         .flash {
             padding: 0.75rem 1rem;
-            border-radius: 14px;
+            border-radius: var(--radius);
             margin-bottom: 1rem;
-            background: rgba(52,211,153,.12);
+            background: rgba(94,207,142,.12);
             color: color-mix(in oklab, var(--good) 85%, white);
-            border: 1px solid rgba(52,211,153,.22);
+            border: 1px solid rgba(94,207,142,.28);
         }
         .flash--error {
-            background: rgba(251,113,133,.12);
+            background: rgba(224,122,122,.12);
             color: color-mix(in oklab, var(--bad) 85%, white);
-            border-color: rgba(251,113,133,.24);
+            border-color: rgba(224,122,122,.3);
         }
     </style>
     {% block extra_head %}{% endblock %}
@@ -272,7 +353,8 @@
         <a href="/" class="brand"><span class="brand-mark" aria-hidden="true"></span>SoundMatch</a>
         {% set nav_path = request.path %}
         <div class="nav-links">
-            <a href="/artist/intake" class="nav-link{% if nav_path.startswith('/artist') %} nav-link--active{% endif %}">Campaign builder</a>
+            <a href="/artist/intake" class="nav-link{% if nav_path.startswith('/artist/intake') or nav_path.startswith('/artist/campaign') %} nav-link--active{% endif %}">Campaign builder</a>
+            <a href="/artist/history" class="nav-link{% if nav_path.startswith('/artist/history') %} nav-link--active{% endif %}">My campaigns</a>
             <a href="/search/browse" class="nav-link{% if nav_path.startswith('/search') %} nav-link--active{% endif %}">Browse marketers</a>
             <a href="/marketer/apply" class="nav-link{% if nav_path.startswith('/marketer') %} nav-link--active{% endif %}">For marketers</a>
             <a href="/admin/" class="nav-link{% if nav_path.startswith('/admin') %} nav-link--active{% endif %}">Admin</a>
